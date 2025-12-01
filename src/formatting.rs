@@ -677,15 +677,6 @@ impl Backend {
         }
     }
 
-    /*
-        Hate this shit だよ xD
-        Formats create table statements in the following manner
-
-        CREATE TABLE [keyspace_name].table_name (
-            short_name       type
-            long_name_xxxxx  type
-        );
-    */
     pub fn format_table_fields(&self, lines: &mut Vec<String>) {}
 
     pub async fn format_file(&self, lines: &Vec<&str>, document_url: &Url) -> Vec<TextEdit> {
