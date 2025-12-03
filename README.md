@@ -29,7 +29,6 @@ Add env variables to your shell config
 ```sh
 export PATH="$HOME/.cargo/bin:$PATH"
 
-# Default values for LSP | Docker
 export CQL_LSP_DB_URL="172.17.0.2"
 export CQL_LSP_DB_PASSWD="cassandra"
 export CQL_LSP_DB_USER="cassandra"
