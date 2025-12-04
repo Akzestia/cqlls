@@ -3,6 +3,11 @@ use tower_lsp::lsp_types::*;
 
 use crate::{consts::*, lsp::Backend};
 
+struct InsertStatement {
+    pub fields: Vec<String>,
+    pub insert_values: Vec<String>,
+}
+
 impl Backend {
     pub fn remove_leading_spaces_wildcards(&self, line: &mut String) {
         let mut index = 0;
@@ -74,6 +79,39 @@ impl Backend {
         }
     }
 
+    pub fn is_insert_st_end(&self, line: &str) -> bool {
+        todo!()
+    }
+
+    pub async fn format_insert(&self, lines: &mut Vec<&str>, document_url: &Url) {
+        let mut insert_statements: Vec<InsertStatement> = Vec::new();
+        let mut is_inside_insert_st = false;
+
+        for (i, line) in lines.iter().enumerate() {
+            let is_insert_st_start = line.trim().to_lowercase().starts_with("insert into");
+            if is_insert_st_start && !is_inside_insert_st {
+                is_inside_insert_st = true;
+            }
+
+            if is_insert_st_start {
+                if let Some(pos) = line.trim().to_lowercase().find('(') {
+                    if let Some(right_pos) = line.trim().to_lowercase().find(')') {
+                        let fields_line = &line.to_string()[pos + 1..right_pos];
+                        let fields = fields_line.replace(" ", "");
+                        let field_split: Vec<String> =
+                            fields.split(',').map(|f| f.replace(",", "")).collect();
+
+                        insert_statements.push(InsertStatement {
+                            fields: field_split,
+                            insert_values: Vec::new(),
+                        });
+                    } else {
+                    }
+                }
+            }
+        }
+    }
+
     pub async fn align_types_inside_create_statement(
         &self,
         lines: &mut Vec<String>,
@@ -91,7 +129,6 @@ impl Backend {
             let has_open_brace = line.contains('(');
             let has_close_brace = line.contains(')');
 
-            // Update parenthesis depth
             if has_open_brace {
                 parenthesis_depth += line.matches('(').count();
             }
@@ -99,7 +136,6 @@ impl Backend {
                 parenthesis_depth -= line.matches(')').count();
             }
 
-            // Start of a new table
             if is_create_st_start {
                 if in_table && !current_block.is_empty() {
                     working_blocks.push(current_block.clone());
@@ -108,12 +144,10 @@ impl Backend {
                 in_table = true;
             }
 
-            // If we're inside a table and the line contains CQL types, record it
             if in_table && contains_cql_type {
                 current_block.push(i);
             }
 
-            // End of table definition (parenthesis balanced)
             if in_table && parenthesis_depth == 0 && has_close_brace {
                 if !current_block.is_empty() {
                     working_blocks.push(current_block.clone());
@@ -163,10 +197,6 @@ impl Backend {
 
             info!("Size of offsets: {}", offsets.len());
 
-            /*
-             * 0 -> index
-             * 1 -> offset
-             */
             for offset in offsets {
                 if offset.1 < max_offset_x && !lines[offset.0].trim().starts_with("--") {
                     let mut working_line = String::from(&lines[offset.0]);
