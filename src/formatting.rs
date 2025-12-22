@@ -80,7 +80,11 @@ impl Backend {
     }
 
     pub fn is_insert_statement_line(&self, line: &str) -> bool {
-        line.trim().to_lowercase().starts_with("insert into") ? true : false
+        if line.trim().to_lowercase().starts_with("insert into") {
+            return true;
+        } else {
+            return false;
+        };
     }
 
     pub async fn format_insert(&self, lines: &mut Vec<&str>, document_url: &Url) {
