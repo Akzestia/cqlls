@@ -8,7 +8,7 @@
 
 - [Nvim](https://github.com/Akzestia/nvim-cql-v2)
 - [Zed](https://github.com/Akzestia/zed-cql)
-- [VsCode](https://github.com/Akzestia/cqlTextMate)
+- [VS Code](https://github.com/Akzestia/cqlTextMate)
 
 The 1nonly Open Source **language server** for CQL (Cassandra Query Language) ^_^
 
