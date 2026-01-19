@@ -3,6 +3,13 @@
 [![Crates.io](https://img.shields.io/crates/v/cql_lsp.svg)](https://crates.io/crates/cql_lsp)</br> 
 [![Support me on Patreon](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Fshieldsio-patreon.vercel.app%2Fapi%3Fusername%3Dakzestia%26type%3Dpatrons&style=for-the-badge)](https://patreon.com/akzestia)
 
+> [!TIP]
+> OpenSource grammar, highlights and general IDE integration
+
+- [Nvim](https://github.com/Akzestia/nvim-cql-v2)
+- [Zed](https://github.com/Akzestia/zed-cql)
+- [VsCode](https://github.com/Akzestia/cqlTextMate)
+
 The 1nonly Open Source **language server** for CQL (Cassandra Query Language) ^_^
 
 https://github.com/user-attachments/assets/780f9005-d571-489d-93e3-e61f91dcb0fe
