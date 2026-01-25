@@ -3,44 +3,41 @@ use tower_lsp::lsp_types::*;
 
 use crate::{consts::*, lsp::Backend};
 
-struct InsertStatement {
+#[derive(Debug, Clone)]
+pub struct InsertStatement {
+    pub table_name: String,
     pub fields: Vec<String>,
-    pub insert_values: Vec<String>,
+    pub values: Vec<Vec<String>>,
+}
+
+impl InsertStatement {
+    pub fn new() -> Self {
+        Self {
+            table_name: "".to_string(),
+            fields: Vec::new(),
+            values: Vec::new(),
+        }
+    }
 }
 
 impl Backend {
     pub fn remove_leading_spaces_wildcards(&self, line: &mut String) {
-        let mut index = 0;
-        let mut met_space = false;
+        let mut result = String::with_capacity(line.len());
+        let chars: Vec<char> = line.chars().collect();
+        let mut iter = chars.iter().peekable();
 
-        while index < line.len() {
-            if !met_space && line.chars().nth(index).unwrap_or_else(|| '_') == ' ' {
-                met_space = true;
-            }
-
-            if met_space && line.chars().nth(index).unwrap_or_else(|| '_') != ' ' {
-                met_space = false;
-            }
-
-            if met_space
-                && index != line.len() - 1
-                && (line.chars().nth(index + 1).unwrap_or_else(|| '_') == ' '
-                    || line.chars().nth(index + 1).unwrap_or_else(|| '_') == ';'
-                    || line.chars().nth(index + 1).unwrap_or_else(|| '_') == ','
-                    || line.chars().nth(index + 1).unwrap_or_else(|| '_') == ')'
-                    || line.chars().nth(index + 1).unwrap_or_else(|| '_') == '>')
-            {
-                line.remove(index);
-                met_space = false;
-                if index >= 2 {
-                    index -= 2;
-                } else {
-                    index -= 1;
+        while let Some(&current) = iter.next() {
+            if current == ' ' {
+                if let Some(&&next) = iter.peek() {
+                    if matches!(next, ' ' | ';' | ',' | ')' | '>') {
+                        continue; // Skip this space
+                    }
                 }
             }
-
-            index += 1;
+            result.push(current);
         }
+
+        *line = result;
     }
 
     pub fn remove_tailing_spaces_wildcards(&self, line: &mut String) {
@@ -87,128 +84,67 @@ impl Backend {
         };
     }
 
-    pub async fn format_insert(&self, lines: &mut Vec<&str>, document_url: &Url) {
-        let mut insert_statements: Vec<InsertStatement> = Vec::new();
-        let mut is_inside_insert_st = false;
+    fn vec_to_single_line(&self, lines: &Vec<String>) -> String {
+        let mut result = String::new();
 
-        for (i, line) in lines.iter().enumerate() {
-            let is_insert_st_start = line.trim().to_lowercase().starts_with("insert into");
-            if is_insert_st_start && !is_inside_insert_st {
-                is_inside_insert_st = true;
-            }
+        lines.iter().for_each(|f| {
+            result.push_str(f);
+        });
 
-            if is_insert_st_start {
-                if let Some(pos) = line.trim().to_lowercase().find('(') {
-                    if let Some(right_pos) = line.trim().to_lowercase().find(')') {
-                        let fields_line = &line.to_string()[pos + 1..right_pos];
-                        let fields = fields_line.replace(" ", "");
-                        let field_split: Vec<String> =
-                            fields.split(',').map(|f| f.replace(",", "")).collect();
-
-                        insert_statements.push(InsertStatement {
-                            fields: field_split,
-                            insert_values: Vec::new(),
-                        });
-                    } else {
-                    }
-                }
-            }
-        }
+        result
     }
 
-    pub async fn align_types_inside_create_statement(
-        &self,
-        lines: &mut Vec<String>,
-        document_url: &Url,
-    ) {
-        let mut working_blocks: Vec<Vec<usize>> = Vec::new();
-        let mut current_block: Vec<usize> = Vec::new();
-        let mut in_table = false;
-        let mut parenthesis_depth = 0;
+    pub async fn format_insert(&self, lines: &mut Vec<String>, document_url: &Url) {
+        let mut indices: Vec<usize> = Vec::new();
+        let mut ending_indices: Vec<usize> = Vec::new();
 
-        for (i, line) in lines.iter().enumerate() {
-            let is_create_st_start = line.trim().to_lowercase().starts_with("create table")
-                || line.trim().to_lowercase().starts_with("create type");
-            let contains_cql_type = self.line_contains_cql_type(line);
-            let has_open_brace = line.contains('(');
-            let has_close_brace = line.contains(')');
+        let mut met_insert_start = false;
+        let mut met_insert_end = false;
 
-            if has_open_brace {
-                parenthesis_depth += line.matches('(').count();
-            }
-            if has_close_brace {
-                parenthesis_depth -= line.matches(')').count();
+        for (pos, line) in lines.iter().enumerate() {
+            let is_insert_line = line.to_lowercase().trim().starts_with("insert into");
+            let is_end_st = line.ends_with(";");
+
+            if is_insert_line && !met_insert_start {
+                indices.push(pos);
+                met_insert_start = true;
             }
 
-            if is_create_st_start {
-                if in_table && !current_block.is_empty() {
-                    working_blocks.push(current_block.clone());
-                    current_block.clear();
-                }
-                in_table = true;
-            }
-
-            if in_table && contains_cql_type {
-                current_block.push(i);
-            }
-
-            if in_table && parenthesis_depth == 0 && has_close_brace {
-                if !current_block.is_empty() {
-                    working_blocks.push(current_block.clone());
-                    current_block.clear();
-                }
-                in_table = false;
-                parenthesis_depth = 0; // Reset for next table
+            if is_end_st {
+                ending_indices.push(pos);
+                met_insert_start = false;
             }
         }
 
-        if !current_block.is_empty() {
-            working_blocks.push(current_block);
-        }
+        let documents = self.documents.read().await;
 
-        info!("Size of working blocks: {}", working_blocks.len());
+        if let Some(document) = documents.get(document_url) {
+            let lw_doc_text = document;
 
-        for vec in working_blocks.iter() {
-            let mut max_offset_x = 0;
-            let mut offsets: Vec<(usize, usize)> = Vec::new();
+            let substring = "INSERT INTO";
+            let substrings = lw_doc_text
+                .as_bytes()
+                .windows(substring.len())
+                .filter(|&w| w == substring.as_bytes())
+                .count();
 
-            for index in vec {
-                let line = &lines[*index].to_lowercase();
+            let mut insert_statements = Vec::<InsertStatement>::new();
+            insert_statements.reserve(substrings);
 
-                let split: Vec<&str> = line.split_whitespace().collect();
-                let mut line_type = String::from("");
+            info!("Is EQ: {}", indices.len() == ending_indices.len());
 
-                for w in split {
-                    if CQL_TYPES_LWC.contains(&w.to_lowercase().replace(",", "").trim().to_string())
-                        || w.starts_with("set")
-                        || w.starts_with("map")
-                        || w.starts_with("list")
-                        || w.starts_with("frozen")
-                    {
-                        line_type = w.to_string();
-                        break;
-                    }
+            let mut index = 0;
+            while index < indices.len() || index < ending_indices.len() {
+                let statement_str: Vec<&str> = lw_doc_text.split("\n").collect();
+                let vert = &statement_str[indices[index]..ending_indices[index]];
+                let mut str = "".to_string();
+                for l in vert {
+                    str.push_str(l);
                 }
 
-                if let Some(mut offset_x) = line.find(&line_type) {
-                    info!("\n\nOFFSET: {}, LINE_TYPE: {}\n\n", offset_x, line_type);
-                    offsets.push((*index, offset_x));
-                    if max_offset_x < offset_x {
-                        max_offset_x = offset_x;
-                    }
-                }
-            }
+                str = str.replace("\n", " ");
 
-            info!("Size of offsets: {}", offsets.len());
-
-            for offset in offsets {
-                if offset.1 < max_offset_x && !lines[offset.0].trim().starts_with("--") {
-                    let mut working_line = String::from(&lines[offset.0]);
-                    let diff = max_offset_x - offset.1;
-                    info!("\n\nediting line: {}, {}\n\n", working_line, offset.1);
-
-                    lines[offset.0].insert_str(offset.1 - 1, &" ".repeat(diff));
-                }
+                index += 1;
             }
         }
     }
@@ -711,6 +647,103 @@ impl Backend {
         }
     }
 
+    pub async fn align_types_inside_create_statement(
+        &self,
+        lines: &mut Vec<String>,
+        document_url: &Url,
+    ) {
+        let mut working_blocks: Vec<Vec<usize>> = Vec::new();
+        let mut current_block: Vec<usize> = Vec::new();
+        let mut in_table = false;
+        let mut parenthesis_depth = 0;
+
+        for (i, line) in lines.iter().enumerate() {
+            let is_create_st_start = line.trim().to_lowercase().starts_with("create table")
+                || line.trim().to_lowercase().starts_with("create type");
+            let contains_cql_type = self.line_contains_cql_type(line);
+            let has_open_brace = line.contains('(');
+            let has_close_brace = line.contains(')');
+
+            if has_open_brace {
+                parenthesis_depth += line.matches('(').count();
+            }
+            if has_close_brace {
+                parenthesis_depth -= line.matches(')').count();
+            }
+
+            if is_create_st_start {
+                if in_table && !current_block.is_empty() {
+                    working_blocks.push(current_block.clone());
+                    current_block.clear();
+                }
+                in_table = true;
+            }
+
+            if in_table && contains_cql_type {
+                current_block.push(i);
+            }
+
+            if in_table && parenthesis_depth == 0 && has_close_brace {
+                if !current_block.is_empty() {
+                    working_blocks.push(current_block.clone());
+                    current_block.clear();
+                }
+                in_table = false;
+                parenthesis_depth = 0; // Reset for next table
+            }
+        }
+
+        if !current_block.is_empty() {
+            working_blocks.push(current_block);
+        }
+
+        info!("Size of working blocks: {}", working_blocks.len());
+
+        for vec in working_blocks.iter() {
+            let mut max_offset_x = 0;
+            let mut offsets: Vec<(usize, usize)> = Vec::new();
+
+            for index in vec {
+                let line = &lines[*index].to_lowercase();
+
+                let split: Vec<&str> = line.split_whitespace().collect();
+                let mut line_type = String::from("");
+
+                for w in split {
+                    if CQL_TYPES_LWC.contains(&w.to_lowercase().replace(",", "").trim().to_string())
+                        || w.starts_with("set")
+                        || w.starts_with("map")
+                        || w.starts_with("list")
+                        || w.starts_with("frozen")
+                    {
+                        line_type = w.to_string();
+                        break;
+                    }
+                }
+
+                if let Some(mut offset_x) = line.find(&line_type) {
+                    info!("\n\nOFFSET: {}, LINE_TYPE: {}\n\n", offset_x, line_type);
+                    offsets.push((*index, offset_x));
+                    if max_offset_x < offset_x {
+                        max_offset_x = offset_x;
+                    }
+                }
+            }
+
+            info!("Size of offsets: {}", offsets.len());
+
+            for offset in offsets {
+                if offset.1 < max_offset_x && !lines[offset.0].trim().starts_with("--") {
+                    let mut working_line = String::from(&lines[offset.0]);
+                    let diff = max_offset_x - offset.1;
+                    info!("\n\nediting line: {}, {}\n\n", working_line, offset.1);
+
+                    lines[offset.0].insert_str(offset.1 - 1, &" ".repeat(diff));
+                }
+            }
+        }
+    }
+
     pub fn format_table_fields(&self, lines: &mut Vec<String>) {}
 
     pub async fn format_file(&self, lines: &Vec<&str>, document_url: &Url) -> Vec<TextEdit> {
@@ -730,13 +763,13 @@ impl Backend {
         self.apply_semi_colon(&mut working_vec);
         self.add_spacing_new_lines(&mut working_vec);
         self.add_spacing_after_comma(&mut working_vec);
-        // self.format_selectors(&mut working_vec);
         self.add_tabs_to_args(&mut working_vec, document_url).await;
         self.add_new_line_before_pk(&mut working_vec);
         self.add_tabs_to_cql_types(&mut working_vec, document_url)
             .await;
         self.align_types_inside_create_statement(&mut working_vec, document_url)
             .await;
+        self.format_insert(&mut working_vec, document_url).await;
 
         let idx = working_vec.len() - 1;
 
