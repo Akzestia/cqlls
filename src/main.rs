@@ -23,18 +23,19 @@ use tower_lsp::{LspService, Server};
 /*
     Default values for localhosted DB (Tested With ScyllaDB)
 
-
     [LocalHost]
     CQL_LSP_DB_URL = "127.0.0.1:9042"
     CQL_LSP_DB_PASSWD = "cassandra"
     CQL_LSP_DB_USER = "cassandra"
     CQL_LSP_ENABLE_LOGGING = false | Used for development
+    CQL_LSP_TYPE_ALIGNMENT_OFFSET = 7
 
     [Dockerults]
     CQL_LSP_DB_URL = "172.17.0.2:9042"
     CQL_LSP_DB_PASSWD = "cassandra"
     CQL_LSP_DB_USER = "cassandra"
     CQL_LSP_ENABLE_LOGGING = false | Used for development
+    CQL_LSP_TYPE_ALIGNMENT_OFFSET = 7
 */
 
 /*
@@ -46,22 +47,24 @@ use tower_lsp::{LspService, Server};
     the LSP implementation.
 */
 
+/// Docs https://akzestia.dev/cqlls
+///
+///
+///
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Setup logger
+    // Starting LSP
     let enable_logging = std::env::var("CQL_LSP_ENABLE_LOGGING").unwrap_or_else(|_| {
         info!("Logging mode wasn't provided. Setting Logging mode to default(false)");
         "false".to_string()
     });
 
-    // Enabel logging if env variable was set to true
     if enable_logging == "true" {
-        setup_logger().map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
+        println!("Setting up logger");
+        setup_logger().unwrap_or_else(|e| println!("{e}"));
     }
 
-    // Set missing env variables to default ones
     let url = std::env::var("CQL_LSP_DB_URL").unwrap_or_else(|_| {
-        // Defaults to localhost and NOT docker
         info!("Db url wasn't provided. Setting url to default(127.0.0.1)");
         "127.0.0.1".to_string()
     });
@@ -78,11 +81,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
        "7".to_string()
     });
 
-    // Init CqlSettings settings
     let settings = CqlSettings::from_env(&url, &pswd, &user);
     let formatting_settings = FormattingSettings::from_env(&type_alignment_offset);
 
-    // Start LSP
     let stdin = stdin();
     let stdout = stdout();
     let (service, socket) = LspService::new(|client| Backend {
@@ -91,6 +92,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         current_document: RwLock::new(None),
         config: settings,
         formatting_config: formatting_settings,
+        indent: "    ".to_string(),
+        max_line_length: 20,
     });
 
     Server::new(stdin, stdout, socket).serve(service).await;
