@@ -12,6 +12,7 @@ edition = "2024"
 
 [dependencies]
 chrono = "0.4.40"
+clap = "4.5.54"
 dirs = "6.0.0"
 fern = "0.7.1"
 futures = "0.3.31"
