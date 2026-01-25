@@ -39,6 +39,8 @@ pub struct Backend {
     pub current_document: RwLock<Option<RwLock<Document>>>,
     pub config: CqlSettings,
     pub formatting_config: FormattingSettings,
+    pub indent: String,
+    pub max_line_length: usize,
 }
 
 #[derive(Debug, Clone)]
