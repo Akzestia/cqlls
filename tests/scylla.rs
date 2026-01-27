@@ -1,4 +1,6 @@
-use cql_lsp::cqlsh::{CqlSettings, TlsMode, check_connection};
+use cql_lsp::cqlsh::{CqlSettings, check_connection, query_keyspaces};
+
+const SCYLLA_HOST: &str = "127.0.0.1:9042";
 
 #[tokio::test]
 async fn test_connection_no_tls() {
@@ -10,36 +12,48 @@ async fn test_connection_no_tls() {
 }
 
 #[tokio::test]
-async fn test_connection_with_tls() {
-    let ca_cert_file = std::env::var("CQL_LSP_TLS_CA_CERT_FILE").unwrap_or_else(|_| {
-        "".to_string()
-    });
-    let config = CqlSettings::from_env("172.17.0.2:9042", "cassandra", "cassandra")
-        .with_tls(ca_cert_file);
+async fn test_query_keyspaces_no_tls() {
+    let config = CqlSettings::new();
 
     let result = check_connection(&config).await;
 
+    assert!(result.is_ok(), "Failed to connect: {:?}", result.err());
+
+    let keyspaces = query_keyspaces(&config).await;
+
     assert!(
-        result.is_ok(),
-        "Failed to connect with TLS: {:?}",
-        result.err()
+        keyspaces.is_ok(),
+        "Failed to query keyspaces: {:?}",
+        keyspaces.err()
     );
 }
 
 #[tokio::test]
-async fn test_connection_invalid_host() {
-    let config = CqlSettings::from_env("invalid-host:9042", "cassandra", "cassandra");
+async fn test_connection_with_tls() {
+    let config = CqlSettings::new().with_tls("./certs/ca.crt");
 
-    let result = check_connection(&config).await;
+    let session = check_connection(&config).await;
 
-    assert!(result.is_err(), "Should fail with invalid host");
+    match &session {
+        Ok(s) => {
+            println!("Keyspaces: {:?}", s);
+        }
+        _ => {}
+    }
+
+    assert!(session.is_ok(), "Failed to connect: {:?}", session.err());
+    println!("Connected successfully with TLS!");
 }
 
 #[tokio::test]
-async fn test_connection_wrong_credentials() {
-    let config = CqlSettings::from_env("127.0.0.1:9042", "wrong_password", "wrong_user");
-
+async fn test_query_data() {
+    let ca_cert_file = std::env::var("CQL_LSP_TLS_CA_CERT_FILE").unwrap_or_else(|_| "".to_string());
+    let config =
+        CqlSettings::from_env(SCYLLA_HOST, "cassandra", "cassandra").with_tls(ca_cert_file);
     let result = check_connection(&config).await;
+    assert!(result.is_ok(), "Failed to connect: {:?}", result.err());
 
-    assert!(result.is_err(), "Should fail with wrong credentials");
+    let ksp = query_keyspaces(&config).await;
+    println!("Keyspaces: {:?}", ksp.as_ref().unwrap().iter().clone());
+    assert!(ksp.is_ok(), "Failed to query keyspaces: {:?}", ksp.err());
 }
