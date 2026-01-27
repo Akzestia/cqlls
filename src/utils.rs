@@ -65,11 +65,13 @@ impl Backend {
         let mut is_type = false;
 
         for w in split {
-            if CQL_TYPES_LWC.contains(&w.to_lowercase().replace(",", "").trim().to_string())
-                || w.starts_with("set")
-                || w.starts_with("map")
-                || w.starts_with("list")
-                || w.starts_with("frozen")
+            let wlw = w.to_lowercase();
+            if CQL_TYPES_LWC.contains(&wlw.replace(",", "").trim().to_string())
+                || wlw.starts_with("set")
+                || wlw.starts_with("map")
+                || wlw.starts_with("list")
+                || wlw.starts_with("frozen")
+                || wlw.starts_with("\'")
             {
                 info!("{} ^^", w.to_lowercase().to_string());
                 is_type = true;
@@ -177,7 +179,7 @@ impl Backend {
         let mut top_line = false;
         let mut bottom_line = false;
 
-        while up_index > 0 {
+        while up_index > 0 && up_index < lines.len() {
             if !top_line && lines[up_index].contains("/*") {
                 top_line = true;
             }
@@ -192,11 +194,11 @@ impl Backend {
             up_index -= 1;
         }
 
-        if !top_line && lines[up_index].contains("/*") {
+        if up_index < line.len() && !top_line && lines[up_index].contains("/*") {
             top_line = true;
         }
 
-        if !top_line && lines[up_index].contains("*/") {
+        if up_index < line.len() && !top_line && lines[up_index].contains("*/") {
             return false;
         }
 
@@ -254,11 +256,11 @@ impl Backend {
             up_index -= 1;
         }
 
-        if !top_line && lines[up_index].contains("/*") {
+        if up_index < line.len() && !top_line && lines[up_index].contains("/*") {
             top_line = true;
         }
 
-        if !top_line && lines[up_index].contains("*/") {
+        if up_index < line.len() && !top_line && lines[up_index].contains("*/") {
             return false;
         }
 
