@@ -1,3 +1,26 @@
+/*
+MIT License
+
+Copyright (c) 2025-2026 アクゼスティア
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
 use log::{info, warn};
 
 use crate::consts::*;
@@ -7,26 +30,18 @@ use tower_lsp::lsp_types::*;
 
 impl Backend {
     pub fn is_use_keyspace_line(&self, s: &str) -> bool {
-        // use "x";
-        if s.len() < 8 {
+        let input: Vec<char> = s.trim().chars().collect();
+
+        if input.len() < 7 {
             return false;
         }
 
-        let input_str: Vec<char> = s.trim().chars().collect();
-
-        let use_statement = String::from_iter(&input_str[0..=2]);
-
-        if use_statement.to_lowercase() != "use" {
+        let keyword: String = input[0..3].iter().collect();
+        if keyword.eq_ignore_ascii_case("use") == false {
             return false;
         }
 
-        if (input_str[3] != '\"'
-            && input_str[input_str.len() - 2] != '\"'
-            && input_str[input_str.len() - 1] != ';')
-            || (input_str[3] != '\"'
-                && input_str[input_str.len() - 2] != '\"'
-                && input_str[input_str.len() - 1] != ';')
-        {
+        if input[3] != '"' || input[input.len() - 2] != '"' || input[input.len() - 1] != ';' {
             return false;
         }
 
@@ -47,7 +62,12 @@ impl Backend {
 
     // Works
     pub fn should_suggest_keyspaces(&self, line: &str, position: &Position) -> bool {
-        let prefix = match line.get(..position.character as usize) {
+        let byte_pos = line
+            .char_indices()
+            .nth(position.character as usize)
+            .map(|(i, _)| i)
+            .unwrap_or(line.len());
+        let prefix = match line.get(..byte_pos) {
             Some(p) => p,
             None => return false,
         };
@@ -64,21 +84,16 @@ impl Backend {
         let trimmed_prefix = prefix.trim_end().to_lowercase();
         let split: Vec<&str> = trimmed_prefix.split(' ').collect();
 
-        while index < position.character as usize {
-            if met_bracket
-                && (line.chars().nth(index).unwrap_or_else(|| '_') == '"'
-                    || line.chars().nth(index).unwrap_or_else(|| '_') == '\'')
-            {
+        for (idx, ch) in line.chars().enumerate() {
+            if idx >= position.character as usize {
+                break;
+            }
+            if met_bracket && (ch == '"' || ch == '\'') {
                 return false;
             }
-
-            if !met_bracket
-                && (line.chars().nth(index).unwrap_or_else(|| '_') == '"'
-                    || line.chars().nth(index).unwrap_or_else(|| '_') == '\'')
-            {
+            if !met_bracket && (ch == '"' || ch == '\'') {
                 met_bracket = true;
             }
-            index += 1;
         }
 
         if !split.contains(&"use") {
@@ -101,7 +116,13 @@ impl Backend {
     pub fn should_suggest_drop_keyspaces(&self, line: &str, position: &Position) -> bool {
         let lw = line.to_lowercase();
 
-        let prefix = match line.get(..position.character as usize) {
+        let byte_pos = line
+            .char_indices()
+            .nth(position.character as usize)
+            .map(|(i, _)| i)
+            .unwrap_or(line.len());
+
+        let prefix = match line.get(..byte_pos) {
             Some(p) => p,
             None => return false,
         };
@@ -132,7 +153,12 @@ impl Backend {
     pub fn should_suggest_drop_aggregate(&self, line: &str, position: &Position) -> bool {
         let lw = line.to_lowercase();
 
-        let prefix = match line.get(..position.character as usize) {
+        let byte_pos = line
+            .char_indices()
+            .nth(position.character as usize)
+            .map(|(i, _)| i)
+            .unwrap_or(line.len());
+        let prefix = match line.get(..byte_pos) {
             Some(p) => p,
             None => return false,
         };
@@ -166,7 +192,12 @@ impl Backend {
     pub fn should_suggest_drop_function(&self, line: &str, position: &Position) -> bool {
         let lw = line.to_lowercase();
 
-        let prefix = match line.get(..position.character as usize) {
+        let byte_pos = line
+            .char_indices()
+            .nth(position.character as usize)
+            .map(|(i, _)| i)
+            .unwrap_or(line.len());
+        let prefix = match line.get(..byte_pos) {
             Some(p) => p,
             None => return false,
         };
@@ -197,7 +228,12 @@ impl Backend {
     pub fn should_suggest_drop_indexes(&self, line: &str, position: &Position) -> bool {
         let lw = line.to_lowercase();
 
-        let prefix = match line.get(..position.character as usize) {
+        let byte_pos = line
+            .char_indices()
+            .nth(position.character as usize)
+            .map(|(i, _)| i)
+            .unwrap_or(line.len());
+        let prefix = match line.get(..byte_pos) {
             Some(p) => p,
             None => return false,
         };
@@ -227,7 +263,12 @@ impl Backend {
     pub fn should_suggest_drop_types(&self, line: &str, position: &Position) -> bool {
         let lw = line.to_lowercase();
 
-        let prefix = match line.get(..position.character as usize) {
+        let byte_pos = line
+            .char_indices()
+            .nth(position.character as usize)
+            .map(|(i, _)| i)
+            .unwrap_or(line.len());
+        let prefix = match line.get(..byte_pos) {
             Some(p) => p,
             None => return false,
         };
@@ -257,7 +298,12 @@ impl Backend {
     pub fn should_suggest_drop_views(&self, line: &str, position: &Position) -> bool {
         let lw = line.to_lowercase();
 
-        let prefix = match line.get(..position.character as usize) {
+        let byte_pos = line
+            .char_indices()
+            .nth(position.character as usize)
+            .map(|(i, _)| i)
+            .unwrap_or(line.len());
+        let prefix = match line.get(..byte_pos) {
             Some(p) => p,
             None => return false,
         };
@@ -287,7 +333,12 @@ impl Backend {
     pub fn should_suggest_drop_tables(&self, line: &str, position: &Position) -> bool {
         let lw = line.to_lowercase();
 
-        let prefix = match line.get(..position.character as usize) {
+        let byte_pos = line
+            .char_indices()
+            .nth(position.character as usize)
+            .map(|(i, _)| i)
+            .unwrap_or(line.len());
+        let prefix = match line.get(..byte_pos) {
             Some(p) => p,
             None => return false,
         };
@@ -320,7 +371,12 @@ impl Backend {
 
     // Works
     pub fn should_suggest_graph_engine_types(&self, line: &str, position: &Position) -> bool {
-        let prefix = match line.get(..position.character as usize) {
+        let byte_pos = line
+            .char_indices()
+            .nth(position.character as usize)
+            .map(|(i, _)| i)
+            .unwrap_or(line.len());
+        let prefix = match line.get(..byte_pos) {
             Some(p) => p,
             None => return false,
         };
@@ -468,7 +524,12 @@ impl Backend {
 
     // Works
     pub async fn should_suggest_keywords(&self, line: &str, position: &Position) -> bool {
-        let prefix = match line.get(..position.character as usize) {
+        let byte_pos = line
+            .char_indices()
+            .nth(position.character as usize)
+            .map(|(i, _)| i)
+            .unwrap_or(line.len());
+        let prefix = match line.get(..byte_pos) {
             Some(p) => p,
             None => return false,
         };
@@ -784,15 +845,14 @@ impl Backend {
     }
 
     pub fn get_start_offset(&self, line: &str, position: &Position) -> u32 {
-        let mut index = position.character as usize;
+        let chars: Vec<char> = line.chars().collect();
+        let char_count = chars.len();
+        let mut index = (position.character as usize).min(char_count.saturating_sub(1));
 
         while index > 0 {
-            if let Some(char) = line.chars().nth(index) {
-                if char == ' ' {
-                    return index as u32;
-                }
+            if chars[index] == ' ' {
+                return index as u32;
             }
-
             index -= 1;
         }
 
@@ -1068,7 +1128,12 @@ impl Backend {
 
     // Works
     pub fn should_suggest_fields(&self, line: &str, position: &Position) -> bool {
-        let prefix = match line.get(..position.character as usize) {
+        let byte_pos = line
+            .char_indices()
+            .nth(position.character as usize)
+            .map(|(i, _)| i)
+            .unwrap_or(line.len());
+        let prefix = match line.get(..byte_pos) {
             Some(p) => p,
             None => return false,
         };
@@ -1100,7 +1165,12 @@ impl Backend {
 
     // Works
     pub fn should_suggest_from(&self, line: &str, position: &Position) -> bool {
-        let prefix = match line.get(..position.character as usize) {
+        let byte_pos = line
+            .char_indices()
+            .nth(position.character as usize)
+            .map(|(i, _)| i)
+            .unwrap_or(line.len());
+        let prefix = match line.get(..byte_pos) {
             Some(p) => p,
             None => return false,
         };
@@ -1279,12 +1349,10 @@ impl Backend {
 
             let mut search_index = line_index as isize;
 
-            // Search backwards for start of comment (/*)
             let mut found_comment_start = false;
             while search_index >= 0 {
                 let line_content = lines[search_index as usize];
 
-                // If we find a comment end before the start, we’re outside
                 if line_content.contains("*/") {
                     return false;
                 }
@@ -1301,7 +1369,6 @@ impl Backend {
                 return false;
             }
 
-            // Search forward for end of comment (*/)
             for i in line_index..lines.len() {
                 let line_content = lines[i];
                 if line_content.contains("*/") {
@@ -1331,22 +1398,18 @@ impl Backend {
             let mut search_index = line_index as isize;
             let mut found_open_brace = false;
 
-            // Search backwards to find where the block started
             while search_index >= 0 {
                 let line_content = lines[search_index as usize].to_lowercase();
 
-                // If we find a closing brace before an opening one, we're not inside a block
                 if line_content.contains('}') {
                     return false;
                 }
 
-                // Detect the start of a curly brace block
                 if line_content.contains('{') {
                     found_open_brace = true;
                     break;
                 }
 
-                // If another CQL keyword is found, break (not inside block)
                 if self.line_contains_cql_kw(&line_content) {
                     return false;
                 }
@@ -1358,11 +1421,9 @@ impl Backend {
                 return false;
             }
 
-            // Search forward to see if the block closes after this line
             for i in line_index..lines.len() {
                 let line_content = lines[i];
 
-                // If another statement starts, we’re outside the block
                 if self.line_contains_cql_kw(line_content) {
                     return false;
                 }
@@ -1444,7 +1505,12 @@ impl Backend {
         position: &Position,
         document_url: &Url,
     ) -> bool {
-        let prefix = match line.get(..position.character as usize) {
+        let byte_pos = line
+            .char_indices()
+            .nth(position.character as usize)
+            .map(|(i, _)| i)
+            .unwrap_or(line.len());
+        let prefix = match line.get(..byte_pos) {
             Some(p) => p,
             None => return false,
         };
@@ -1534,7 +1600,12 @@ impl Backend {
             return false;
         }
 
-        let prefix = match line.get(..position.character as usize) {
+        let byte_pos = line
+            .char_indices()
+            .nth(position.character as usize)
+            .map(|(i, _)| i)
+            .unwrap_or(line.len());
+        let prefix = match line.get(..byte_pos) {
             Some(p) => p,
             None => return false,
         };
@@ -1570,7 +1641,12 @@ impl Backend {
             return false;
         }
 
-        let prefix = match line.get(..position.character as usize) {
+        let byte_pos = line
+            .char_indices()
+            .nth(position.character as usize)
+            .map(|(i, _)| i)
+            .unwrap_or(line.len());
+        let prefix = match line.get(..byte_pos) {
             Some(p) => p,
             None => return false,
         };
@@ -1598,7 +1674,12 @@ impl Backend {
 
     // Works
     pub fn should_suggest_table_completions(&self, line: &str, position: &Position) -> bool {
-        let prefix = match line.get(..position.character as usize) {
+        let byte_pos = line
+            .char_indices()
+            .nth(position.character as usize)
+            .map(|(i, _)| i)
+            .unwrap_or(line.len());
+        let prefix = match line.get(..byte_pos) {
             Some(p) => p,
             None => return false,
         };
@@ -1661,7 +1742,12 @@ impl Backend {
     }
 
     pub fn should_suggest_if_not_exists(&self, line: &str, position: &Position) -> bool {
-        let prefix = match line.get(..position.character as usize) {
+        let byte_pos = line
+            .char_indices()
+            .nth(position.character as usize)
+            .map(|(i, _)| i)
+            .unwrap_or(line.len());
+        let prefix = match line.get(..byte_pos) {
             Some(p) => p,
             None => return false,
         };
@@ -1700,7 +1786,12 @@ impl Backend {
     }
 
     pub fn should_suggest_create_keywords(&self, line: &str, position: &Position) -> bool {
-        let prefix = match line.get(..position.character as usize) {
+        let byte_pos = line
+            .char_indices()
+            .nth(position.character as usize)
+            .map(|(i, _)| i)
+            .unwrap_or(line.len());
+        let prefix = match line.get(..byte_pos) {
             Some(p) => p,
             None => return false,
         };
@@ -1720,7 +1811,12 @@ impl Backend {
     }
 
     pub fn should_suggest_alter_keywords(&self, line: &str, position: &Position) -> bool {
-        let prefix = match line.get(..position.character as usize) {
+        let byte_pos = line
+            .char_indices()
+            .nth(position.character as usize)
+            .map(|(i, _)| i)
+            .unwrap_or(line.len());
+        let prefix = match line.get(..byte_pos) {
             Some(p) => p,
             None => return false,
         };
@@ -1740,7 +1836,12 @@ impl Backend {
     }
 
     pub fn should_suggest_drop_keywords(&self, line: &str, position: &Position) -> bool {
-        let prefix = match line.get(..position.character as usize) {
+        let byte_pos = line
+            .char_indices()
+            .nth(position.character as usize)
+            .map(|(i, _)| i)
+            .unwrap_or(line.len());
+        let prefix = match line.get(..byte_pos) {
             Some(p) => p,
             None => return false,
         };
