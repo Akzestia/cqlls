@@ -32,6 +32,7 @@ use std::fmt;
 use std::time::Duration;
 
 use log::info;
+use rustls::pki_types::{CertificateDer, pem::PemObject};
 use rustls::{ClientConfig, RootCertStore};
 use rustls_pemfile;
 use std::fs::File;
@@ -50,7 +51,7 @@ impl Table {
     }
 }
 
-#[derive(DeserializeRow)]
+#[derive(Debug, DeserializeRow)]
 pub struct KeySpace {
     pub keyspace_name: String,
     pub durable_writes: bool,
@@ -168,6 +169,7 @@ impl CqlSettings {
 }
 
 /// Builds client session
+/// Builds client session
 async fn build_session(config: &CqlSettings) -> Result<Session, Box<dyn std::error::Error>> {
     let mut builder = SessionBuilder::new()
         .known_node(&config.url)
@@ -175,15 +177,21 @@ async fn build_session(config: &CqlSettings) -> Result<Session, Box<dyn std::err
         .connection_timeout(Duration::from_secs(3));
 
     match &config.tls {
-        TlsMode::None => {}
+        TlsMode::None => {
+            info!("Connecting without TLS");
+        }
         TlsMode::Tls { ca_cert_path } => {
-            let mut root_store = RootCertStore::empty();
-            let ca_file = File::open(ca_cert_path)?;
-            let mut reader = BufReader::new(ca_file);
-
-            for cert in rustls_pemfile::certs(&mut reader) {
-                root_store.add(cert?)?;
+            if ca_cert_path.is_empty() {
+                return Err("TLS enabled but ca_cert_path is empty".into());
             }
+
+            info!("Connecting with TLS, cert path: {}", ca_cert_path);
+
+            let rustls_ca = CertificateDer::from_pem_file(ca_cert_path)
+                .map_err(|e| format!("Failed to load CA cert '{}': {}", ca_cert_path, e))?;
+
+            let mut root_store = RootCertStore::empty();
+            root_store.add(rustls_ca)?;
 
             let tls_config = ClientConfig::builder()
                 .with_root_certificates(root_store)
@@ -195,7 +203,6 @@ async fn build_session(config: &CqlSettings) -> Result<Session, Box<dyn std::err
 
     Ok(builder.build().await?)
 }
-
 pub async fn query_keyspaces(
     config: &CqlSettings,
 ) -> Result<Vec<KeySpace>, Box<dyn std::error::Error>> {
@@ -256,7 +263,7 @@ pub async fn query_g_fields(
 }
 
 pub async fn check_connection(config: &CqlSettings) -> Result<bool, Box<dyn std::error::Error>> {
-    _ = build_session(config);
+    _ = build_session(config).await?;
     Ok(true)
 }
 
