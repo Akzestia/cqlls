@@ -1,3 +1,26 @@
+/*
+MIT License
+
+Copyright (c) 2025-2026 アクゼスティア
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
 use log::info;
 use tower_lsp::lsp_types::*;
 
@@ -30,7 +53,7 @@ impl Backend {
             if current == ' ' {
                 if let Some(&&next) = iter.peek() {
                     if matches!(next, ' ' | ';' | ',' | ')' | '>') {
-                        continue; // Skip this space
+                        continue;
                     }
                 }
             }
@@ -41,39 +64,35 @@ impl Backend {
     }
 
     pub fn remove_tailing_spaces_wildcards(&self, line: &mut String) {
+        let mut chars: Vec<char> = line.chars().collect();
         let mut index = 0;
         let mut met_wild_card = false;
 
-        while index < line.len() {
-            if !met_wild_card
-                && (line.chars().nth(index).unwrap_or_else(|| '_') == '('
-                    || line.chars().nth(index).unwrap_or_else(|| '_') == '<')
-            {
+        while index < chars.len() {
+            let current_char = chars[index];
+
+            if !met_wild_card && (current_char == '(' || current_char == '<') {
                 met_wild_card = true;
             }
 
-            if met_wild_card
-                && line.chars().nth(index).unwrap_or_else(|| '_') != '('
-                && line.chars().nth(index).unwrap_or_else(|| '_') != '<'
-            {
+            if met_wild_card && current_char != '(' && current_char != '<' {
                 met_wild_card = false;
             }
 
-            if met_wild_card
-                && index != line.len() - 1
-                && line.chars().nth(index + 1).unwrap_or_else(|| '_') == ' '
-            {
-                line.remove(index + 1);
+            if met_wild_card && index + 1 < chars.len() && chars[index + 1] == ' ' {
+                chars.remove(index + 1);
                 met_wild_card = false;
                 if index >= 2 {
                     index -= 2;
-                } else {
+                } else if index > 0 {
                     index -= 1;
                 }
             }
 
             index += 1;
         }
+
+        *line = chars.into_iter().collect();
     }
 
     pub fn is_insert_statement_line(&self, line: &str) -> bool {
@@ -84,75 +103,295 @@ impl Backend {
         };
     }
 
-    fn vec_to_single_line(&self, lines: &Vec<String>) -> String {
-        let mut result = String::new();
-
-        lines.iter().for_each(|f| {
-            result.push_str(f);
-        });
-
-        result
-    }
-
-    pub async fn format_insert(&self, lines: &mut Vec<String>, document_url: &Url) {
+    pub async fn format_insert(&self, lines: &mut Vec<String>, _document_url: &Url) {
         let mut indices: Vec<usize> = Vec::new();
         let mut ending_indices: Vec<usize> = Vec::new();
-
         let mut met_insert_start = false;
-        let mut met_insert_end = false;
 
         for (pos, line) in lines.iter().enumerate() {
             let is_insert_line = line.to_lowercase().trim().starts_with("insert into");
-            let is_end_st = line.ends_with(";");
+            let mut is_end_st = false;
+
+            if pos + 1 != lines.len() {
+                is_end_st = (line.trim().ends_with(";") || lines[pos + 1].trim().is_empty());
+            } else {
+                is_end_st = true
+            }
+
+            if is_insert_line && met_insert_start {
+                is_end_st = true;
+            }
 
             if is_insert_line && !met_insert_start {
                 indices.push(pos);
                 met_insert_start = true;
             }
-
-            if is_end_st {
+            if met_insert_start && is_end_st {
                 ending_indices.push(pos);
                 met_insert_start = false;
             }
         }
 
-        let documents = self.documents.read().await;
+        let mut total_new_lines: i32 = 0;
+        let mut statements_info: Vec<(usize, usize, Vec<String>)> = Vec::new();
 
-        if let Some(document) = documents.get(document_url) {
-            let lw_doc_text = document;
+        for (start, end) in indices.iter().zip(ending_indices.iter()) {
+            if *start <= *end && *end < lines.len() {
+                let statement: String = lines[*start..=*end].join(" ");
+                let normalized: String = statement
+                    .split_whitespace()
+                    .collect::<Vec<&str>>()
+                    .join(" ");
 
-            let substring = "INSERT INTO";
-            let substrings = lw_doc_text
-                .as_bytes()
-                .windows(substring.len())
-                .filter(|&w| w == substring.as_bytes())
-                .count();
+                let formatted = self.format_insert_statement(&normalized);
+                let formatted_lines: Vec<String> =
+                    formatted.lines().map(|s| s.to_string()).collect();
 
-            let mut insert_statements = Vec::<InsertStatement>::new();
-            insert_statements.reserve(substrings);
+                let original_count = (*end - *start + 1) as i32;
+                let new_count = formatted_lines.len() as i32;
+                total_new_lines += new_count - original_count;
 
-            info!("Is EQ: {}", indices.len() == ending_indices.len());
+                statements_info.push((*start, *end, formatted_lines));
+            }
+        }
 
-            let mut index = 0;
-            while index < indices.len() || index < ending_indices.len() {
-                let statement_str: Vec<&str> = lw_doc_text.split("\n").collect();
-                let vert = &statement_str[indices[index]..ending_indices[index]];
-                let mut str = "".to_string();
-                for l in vert {
-                    str.push_str(l);
+        if total_new_lines > 0 {
+            let new_size = lines.len() + total_new_lines as usize;
+            lines.resize(new_size, String::new());
+        }
+
+        for (start, end, formatted_lines) in statements_info.into_iter().rev() {
+            let original_line_count = end - start + 1;
+            let new_line_count = formatted_lines.len();
+
+            if new_line_count > original_line_count {
+                let shift = new_line_count - original_line_count;
+                for i in (end + 1..lines.len() - shift).rev() {
+                    lines[i + shift] = lines[i].clone();
                 }
+            } else if new_line_count < original_line_count {
+                let shift = original_line_count - new_line_count;
+                for i in (end + 1)..lines.len() {
+                    if i + shift < lines.len() {
+                        lines[i] = lines[i + shift].clone();
+                    }
+                }
+                lines.truncate(lines.len() - shift);
+            }
 
-                str = str.replace("\n", " ");
-
-                index += 1;
+            for (i, formatted_line) in formatted_lines.into_iter().enumerate() {
+                lines[start + i] = formatted_line;
             }
         }
     }
 
+    pub fn format_insert_statement(&self, input: &str) -> String {
+        let mut result = String::new();
+        let mut indent_level = 0;
+        let mut chars = input.chars().peekable();
+        let mut in_string = false;
+        let mut string_char = ' ';
+        let mut paren_depth = 0;
+        let mut in_function = false;
+        let mut after_into_table = false;
+
+        while let Some(c) = chars.next() {
+            if (c == '\'' || c == '"') && !in_string {
+                in_string = true;
+                string_char = c;
+                result.push(c);
+                continue;
+            }
+            if in_string && c == string_char {
+                in_string = false;
+                result.push(c);
+                continue;
+            }
+            if in_string {
+                result.push(c);
+                continue;
+            }
+            match c {
+                '(' => {
+                    let is_function_call = self.is_function_call(&result);
+                    if is_function_call && !after_into_table {
+                        if !in_function {
+                            in_function = true;
+                            paren_depth = 1;
+                        } else {
+                            paren_depth += 1;
+                        }
+                        result.push(c);
+                    } else {
+                        after_into_table = false;
+                        result.push(c);
+                        indent_level += 1;
+                        result.push('\n');
+                        result.push_str(&"    ".repeat(indent_level));
+                    }
+                }
+                ')' => {
+                    if in_function {
+                        paren_depth -= 1;
+                        result.push(c);
+                        if paren_depth == 0 {
+                            in_function = false;
+                        }
+                    } else {
+                        indent_level = indent_level.saturating_sub(1);
+                        result.push('\n');
+                        result.push_str(&"    ".repeat(indent_level));
+                        result.push(c);
+                    }
+                }
+                '{' => {
+                    result.push(c);
+                    indent_level += 1;
+                    result.push('\n');
+                    result.push_str(&"    ".repeat(indent_level));
+                }
+                '}' => {
+                    indent_level = indent_level.saturating_sub(1);
+                    result.push('\n');
+                    result.push_str(&"    ".repeat(indent_level));
+                    result.push(c);
+                }
+                ',' => {
+                    result.push(c);
+                    if !in_function {
+                        result.push('\n');
+                        result.push_str(&"    ".repeat(indent_level));
+                    }
+                    while chars.peek() == Some(&' ') {
+                        chars.next();
+                    }
+                }
+                ' ' => {
+                    if !result.ends_with(' ')
+                        && !result.ends_with('\n')
+                        && !result.ends_with("    ")
+                    {
+                        result.push(c);
+                    }
+                    if self.is_after_into_tablename(&result) {
+                        after_into_table = true;
+                    }
+                }
+                _ => {
+                    result.push(c);
+                }
+            }
+        }
+
+        result = result.replace("VALUES", "\nVALUES");
+
+        result
+            .lines()
+            .map(|line| line.trim_end())
+            .collect::<Vec<&str>>()
+            .join("\n")
+    }
+
+    fn is_function_call(&self, s: &str) -> bool {
+        let known_functions = [
+            "UUID",
+            "NOW",
+            "TOTIMESTAMP",
+            "TOUNIXTIMESTAMP",
+            "TODATE",
+            "TOKEN",
+            "TTL",
+            "WRITETIME",
+            "CAST",
+            "COUNT",
+            "MIN",
+            "MAX",
+            "SUM",
+            "AVG",
+            "BLOB",
+            "ASCII",
+            "BIGINT",
+            "BOOLEAN",
+            "COUNTER",
+            "DATE",
+            "DECIMAL",
+            "DOUBLE",
+            "FLOAT",
+            "INET",
+            "INT",
+            "SMALLINT",
+            "TEXT",
+            "TIME",
+            "TIMESTAMP",
+            "TIMEUUID",
+            "TINYINT",
+            "VARCHAR",
+            "VARINT",
+            "MINTIMEUUID",
+            "MAXTIMEUUID",
+            "BLOBASINT",
+            "BLOBASTEXT",
+            "INTASBLOB",
+            "TEXTASBLOB",
+        ];
+
+        let last_word: String = s
+            .chars()
+            .rev()
+            .take_while(|c| c.is_alphanumeric() || *c == '_')
+            .collect::<String>()
+            .chars()
+            .rev()
+            .collect();
+
+        if last_word.is_empty() {
+            return false;
+        }
+
+        let upper = last_word.to_uppercase();
+
+        known_functions.contains(&upper.as_str())
+    }
+
+    fn is_after_into_tablename(&self, s: &str) -> bool {
+        let trimmed = s.trim_end();
+        let words: Vec<&str> = trimmed.split_whitespace().collect();
+
+        if words.len() >= 3 {
+            let len = words.len();
+            if words[len - 3].to_uppercase() == "INSERT" && words[len - 2].to_uppercase() == "INTO"
+            {
+                return true;
+            }
+        }
+
+        false
+    }
+
     pub async fn add_tabs_to_cql_types(&self, lines: &mut Vec<String>, document_url: &Url) {
         let mut index = 0;
+        let mut in_function_or_aggregate = false;
+
         for line in lines.iter_mut() {
             if line.trim().is_empty() {
+                index += 1;
+                continue;
+            }
+
+            let trimmed_lower = line.trim().to_lowercase();
+
+            if trimmed_lower.starts_with("create function")
+                || trimmed_lower.starts_with("create or replace function")
+                || trimmed_lower.starts_with("create aggregate")
+                || trimmed_lower.starts_with("create or replace aggregate")
+            {
+                in_function_or_aggregate = true;
+            }
+
+            if in_function_or_aggregate {
+                if line.contains(";") {
+                    in_function_or_aggregate = false;
+                }
                 index += 1;
                 continue;
             }
@@ -195,6 +434,103 @@ impl Backend {
         }
     }
 
+    pub async fn add_tabs_to_function_keywords(&self, lines: &mut Vec<String>, document_url: &Url) {
+        let function_keywords = ["called", "returns", "language"];
+
+        let aggregate_keywords = ["sfunc", "stype", "finalfunc"];
+
+        let indent = " ".repeat(4);
+
+        let mut inside_function = false;
+        let mut inside_aggregate = false;
+        let mut index = 0;
+
+        for line in lines.iter_mut() {
+            if line.trim().is_empty() {
+                index += 1;
+                continue;
+            }
+
+            if line.trim().starts_with("--")
+                || line.trim().starts_with("//")
+                || self
+                    .is_inside_multiline_comment_no_position(index, &document_url)
+                    .await
+            {
+                index += 1;
+                continue;
+            }
+
+            let line_lower = line.to_lowercase();
+
+            if line_lower.contains("create function")
+                || line_lower.contains("create or replace function")
+            {
+                inside_function = true;
+                inside_aggregate = false;
+            }
+
+            if line_lower.contains("create aggregate")
+                || line_lower.contains("create or replace aggregate")
+            {
+                inside_aggregate = true;
+                inside_function = false;
+            }
+
+            if (inside_function || inside_aggregate) && line.trim().ends_with(";") {
+                let trimmed = line.trim_start();
+                let first_word = trimmed
+                    .split_whitespace()
+                    .next()
+                    .unwrap_or("")
+                    .to_lowercase();
+
+                let keywords = if inside_function {
+                    &function_keywords[..]
+                } else {
+                    &aggregate_keywords[..]
+                };
+
+                if keywords.contains(&first_word.as_str()) {
+                    *line = format!("{}{}", indent, trimmed);
+                }
+
+                inside_function = false;
+                inside_aggregate = false;
+                index += 1;
+                continue;
+            }
+
+            if inside_function {
+                let trimmed = line.trim_start();
+                let first_word = trimmed
+                    .split_whitespace()
+                    .next()
+                    .unwrap_or("")
+                    .to_lowercase();
+
+                if function_keywords.contains(&first_word.as_str()) {
+                    *line = format!("{}{}", indent, trimmed);
+                }
+            }
+
+            if inside_aggregate {
+                let trimmed = line.trim_start();
+                let first_word = trimmed
+                    .split_whitespace()
+                    .next()
+                    .unwrap_or("")
+                    .to_lowercase();
+
+                if aggregate_keywords.contains(&first_word.as_str()) {
+                    *line = format!("{}{}", indent, trimmed);
+                }
+            }
+
+            index += 1;
+        }
+    }
+
     pub async fn add_tabs_to_args(&self, lines: &mut Vec<String>, document_url: &Url) {
         let mut indices: Vec<usize> = Vec::new();
 
@@ -221,11 +557,17 @@ impl Backend {
             let banned_starts = [
                 "create table",
                 "create type",
+                "alter table",
+                "alter",
                 "select",
                 "as",
                 "on",
                 "where",
                 "with",
+                "--",
+                "//",
+                "/*",
+                "*/",
             ];
 
             let starts_with_banned = banned_starts.iter().any(|p| trimmed_lower.starts_with(p));
@@ -249,7 +591,6 @@ impl Backend {
             }
         }
 
-        // apply indentation
         for i in indices {
             lines[i].insert_str(0, "    ");
         }
@@ -301,63 +642,61 @@ impl Backend {
     Removes duplicates of ;
     */
     pub fn fix_duplicate_semi_colon(&self, line: &mut String) {
+        let mut chars: Vec<char> = line.chars().collect();
         let mut last_colon = false;
         let mut index = 0;
 
-        /*
-        The reason for using unwrap_or_else is
-        that when line contains Japanese (non-standart range ASCII)
-        the line.len() isn't represented correctly and will lead
-        to out of bounds access
-        */
-        while index < line.len() {
-            if !last_colon && line.chars().nth(index).unwrap_or_else(|| '_') == ';' {
+        while index < chars.len() {
+            let current_char = chars[index];
+
+            if !last_colon && current_char == ';' {
                 last_colon = true;
-            } else if last_colon && line.chars().nth(index).unwrap_or_else(|| '_') == ';' {
-                line.remove(index);
+            } else if last_colon && current_char == ';' {
+                chars.remove(index);
                 last_colon = false;
                 if index >= 2 {
                     index -= 2;
-                } else {
+                } else if index > 0 {
                     index -= 1;
                 }
-            } else if line.chars().nth(index).unwrap_or_else(|| '_') != ';' {
+                continue;
+            } else if current_char != ';' {
                 last_colon = false;
             }
             index += 1;
         }
+
+        *line = chars.into_iter().collect();
     }
 
-    // Removes any duplicate spaces
     pub fn fix_spacing(&self, line: &mut String) {
+        let mut chars: Vec<char> = line.chars().collect();
         let mut last_space = false;
         let mut index = 0;
 
-        /*
-            The reason for using unwrap_or_else is
-            that when line contains Japanese (non-standart range ASCII)
-            the line.len() isn't represented correctly and will lead
-            to out of bounds access
-        */
-        while index < line.len() {
-            if !last_space && line.chars().nth(index).unwrap_or_else(|| '_') == ' ' {
+        while index < chars.len() {
+            let current_char = chars[index];
+
+            if !last_space && current_char == ' ' {
                 last_space = true;
-            } else if last_space && line.chars().nth(index).unwrap_or_else(|| '_') == ' ' {
-                line.remove(index);
+            } else if last_space && current_char == ' ' {
+                chars.remove(index);
                 last_space = false;
                 if index >= 2 {
                     index -= 2;
-                } else {
+                } else if index > 0 {
                     index -= 1;
                 }
-            } else if line.chars().nth(index).unwrap_or_else(|| '_') != ' ' {
+                continue;
+            } else if current_char != ' ' {
                 last_space = false;
             }
             index += 1;
         }
+
+        *line = chars.into_iter().collect();
     }
 
-    // Removes \n after \n or ( )
     pub fn fix_new_lines(&self, lines: &mut Vec<String>) {
         let mut index = 0;
         let mut last_new_line = false;
@@ -524,42 +863,19 @@ impl Backend {
         }
     }
 
-    pub fn add_comma_to_fields(&self, lines: &mut Vec<String>) {
-        let mut index = 0;
-
-        // while index < lines.len() {
-        //     if index + 1 != lines.len()
-        //         && self.is_inside_create_table(line, position)
-        //         && (lines[index + 1]
-        //             .trim_start()
-        //             .to_lowercase()
-        //             .starts_with("primary"))
-        //     {
-        //         indicies.push(index + 1);
-        //     }
-
-        //     index += 1;
-        // }
-
-        // for index in indicies.iter() {
-        //     lines.insert(*index, "".to_string());
-        // }
-    }
-
     pub fn add_spacing_after_comma(&self, lines: &mut Vec<String>) {
-        let mut index = 0;
+        for line in lines.iter_mut() {
+            let mut chars: Vec<char> = line.chars().collect();
+            let mut idx = 0;
 
-        while index < lines.len() {
-            for idx in 0..lines[index].len() {
-                if idx + 1 != lines[index].len()
-                    && lines[index].chars().nth(idx).unwrap_or_else(|| '_') == ','
-                    && lines[index].chars().nth(idx + 1).unwrap_or_else(|| '_') != ' '
-                {
-                    lines[index].insert(idx + 1, ' ');
+            while idx < chars.len() {
+                if idx + 1 < chars.len() && chars[idx] == ',' && chars[idx + 1] != ' ' {
+                    chars.insert(idx + 1, ' ');
                 }
+                idx += 1;
             }
 
-            index += 1;
+            *line = chars.into_iter().collect();
         }
     }
 
@@ -634,7 +950,7 @@ impl Backend {
                     start_idx += 1;
                 }
 
-                if lines[index].chars().nth(0).unwrap() == 'S' {
+                if lines[index].chars().next().unwrap_or('s') == 'S' {
                     lines[index] = "SELECT".to_string();
                 } else {
                     lines[index] = "select".to_string();
@@ -655,11 +971,29 @@ impl Backend {
         let mut working_blocks: Vec<Vec<usize>> = Vec::new();
         let mut current_block: Vec<usize> = Vec::new();
         let mut in_table = false;
+        let mut in_function_or_aggregate = false;
         let mut parenthesis_depth = 0;
 
         for (i, line) in lines.iter().enumerate() {
-            let is_create_st_start = line.trim().to_lowercase().starts_with("create table")
-                || line.trim().to_lowercase().starts_with("create type");
+            let trimmed_lower = line.trim().to_lowercase();
+
+            if trimmed_lower.starts_with("create function")
+                || trimmed_lower.starts_with("create or replace function")
+                || trimmed_lower.starts_with("create aggregate")
+                || trimmed_lower.starts_with("create or replace aggregate")
+            {
+                in_function_or_aggregate = true;
+            }
+
+            if in_function_or_aggregate {
+                if line.contains(";") {
+                    in_function_or_aggregate = false;
+                }
+                continue;
+            }
+
+            let is_create_st_start = trimmed_lower.starts_with("create table")
+                || trimmed_lower.starts_with("create type");
             let contains_cql_type = self.line_contains_cql_type(line);
             let has_open_brace = line.contains('(');
             let has_close_brace = line.contains(')');
@@ -668,7 +1002,7 @@ impl Backend {
                 parenthesis_depth += line.matches('(').count();
             }
             if has_close_brace {
-                parenthesis_depth -= line.matches(')').count();
+                parenthesis_depth = parenthesis_depth.saturating_sub(line.matches(')').count());
             }
 
             if is_create_st_start {
@@ -677,6 +1011,7 @@ impl Backend {
                     current_block.clear();
                 }
                 in_table = true;
+                parenthesis_depth = 0;
             }
 
             if in_table && contains_cql_type {
@@ -689,7 +1024,7 @@ impl Backend {
                     current_block.clear();
                 }
                 in_table = false;
-                parenthesis_depth = 0; // Reset for next table
+                parenthesis_depth = 0;
             }
         }
 
@@ -705,7 +1040,6 @@ impl Backend {
 
             for index in vec {
                 let line = &lines[*index].to_lowercase();
-
                 let split: Vec<&str> = line.split_whitespace().collect();
                 let mut line_type = String::from("");
 
@@ -721,7 +1055,7 @@ impl Backend {
                     }
                 }
 
-                if let Some(mut offset_x) = line.find(&line_type) {
+                if let Some(offset_x) = line.find(&line_type) {
                     info!("\n\nOFFSET: {}, LINE_TYPE: {}\n\n", offset_x, line_type);
                     offsets.push((*index, offset_x));
                     if max_offset_x < offset_x {
@@ -734,10 +1068,8 @@ impl Backend {
 
             for offset in offsets {
                 if offset.1 < max_offset_x && !lines[offset.0].trim().starts_with("--") {
-                    let mut working_line = String::from(&lines[offset.0]);
                     let diff = max_offset_x - offset.1;
-                    info!("\n\nediting line: {}, {}\n\n", working_line, offset.1);
-
+                    info!("\n\nediting line: {}, {}\n\n", lines[offset.0], offset.1);
                     lines[offset.0].insert_str(offset.1 - 1, &" ".repeat(diff));
                 }
             }
@@ -747,7 +1079,6 @@ impl Backend {
     pub fn format_table_fields(&self, lines: &mut Vec<String>) {}
 
     pub async fn format_file(&self, lines: &Vec<&str>, document_url: &Url) -> Vec<TextEdit> {
-        let mut edits = Vec::<TextEdit>::new();
         let mut working_vec: Vec<String> = lines.into_iter().map(|s| s.to_string()).collect();
 
         for index in 0..working_vec.len() {
@@ -770,52 +1101,35 @@ impl Backend {
         self.align_types_inside_create_statement(&mut working_vec, document_url)
             .await;
         self.format_insert(&mut working_vec, document_url).await;
+        self.add_tabs_to_function_keywords(&mut working_vec, document_url)
+            .await;
 
-        let idx = working_vec.len() - 1;
+        info!("Working Vec Size: {}", working_vec.len());
+        info!("Original lines: {}", lines.len());
 
-        for (index, line) in working_vec.into_iter().enumerate() {
-            let end_char_pos: u32;
+        let formatted_content = working_vec.join("\n");
 
-            if index >= lines.len() {
-                end_char_pos = line.len() as u32;
-            } else {
-                end_char_pos = lines[index].len() as u32;
-            }
+        let last_line_idx = if lines.is_empty() { 0 } else { lines.len() - 1 };
+        let last_line_len = if lines.is_empty() {
+            0
+        } else {
+            lines[last_line_idx].len()
+        };
 
-            let text_edit = TextEdit {
-                range: Range {
-                    start: Position {
-                        line: index as u32,
-                        character: 0,
-                    },
-                    end: Position {
-                        line: index as u32,
-                        character: end_char_pos,
-                    },
+        let full_edit = TextEdit {
+            range: Range {
+                start: Position {
+                    line: 0,
+                    character: 0,
                 },
-                new_text: line,
-            };
-
-            edits.push(text_edit);
-        }
-
-        if idx < lines.len() {
-            let text_edit = TextEdit {
-                range: Range {
-                    start: Position {
-                        line: idx as u32,
-                        character: lines[idx].len() as u32,
-                    },
-                    end: Position {
-                        line: lines.len() as u32 - 1,
-                        character: lines[lines.len() - 1].len() as u32,
-                    },
+                end: Position {
+                    line: last_line_idx as u32,
+                    character: last_line_len as u32,
                 },
-                new_text: "".to_string(),
-            };
-            edits.push(text_edit);
-        }
+            },
+            new_text: formatted_content,
+        };
 
-        edits
+        vec![full_edit]
     }
 }
