@@ -1040,22 +1040,29 @@ impl Backend {
 
             for index in vec {
                 let line = &lines[*index].to_lowercase();
-                let split: Vec<&str> = line.split_whitespace().collect();
+                let lower = line.to_lowercase();
+                let split: Vec<&str> = lower.split_whitespace().collect();
                 let mut line_type = String::from("");
 
+                info!("\n\nSplit: {:?}\n\n", split);
+
                 for w in split {
-                    if CQL_TYPES_LWC.contains(&w.to_lowercase().replace(",", "").trim().to_string())
-                        || w.starts_with("set")
-                        || w.starts_with("map")
-                        || w.starts_with("list")
-                        || w.starts_with("frozen")
+                    let wlw = w.to_lowercase();
+                    info!("\n\nWLw: {}\n\n", wlw);
+                    if CQL_TYPES_LWC.contains(&wlw.replace(",", "").trim().to_string())
+                        || wlw.starts_with("set")
+                        || wlw.starts_with("map")
+                        || wlw.starts_with("list")
+                        || wlw.starts_with("frozen")
+                        || wlw.starts_with("\'")
                     {
                         line_type = w.to_string();
+                        info!("\n\nTYPE: {}\n\n", line_type);
                         break;
                     }
                 }
 
-                if let Some(offset_x) = line.find(&line_type) {
+                if let Some(offset_x) = lower.to_lowercase().find(&line_type.to_lowercase()) {
                     info!("\n\nOFFSET: {}, LINE_TYPE: {}\n\n", offset_x, line_type);
                     offsets.push((*index, offset_x));
                     if max_offset_x < offset_x {
@@ -1075,8 +1082,6 @@ impl Backend {
             }
         }
     }
-
-    pub fn format_table_fields(&self, lines: &mut Vec<String>) {}
 
     pub async fn format_file(&self, lines: &Vec<&str>, document_url: &Url) -> Vec<TextEdit> {
         let mut working_vec: Vec<String> = lines.into_iter().map(|s| s.to_string()).collect();
