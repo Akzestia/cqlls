@@ -1,0 +1,5 @@
+client_encryption_options:
+  enabled: true
+  certificate: /etc/scylla/certs/server.crt
+  keyfile: /etc/scylla/certs/server.key
+  truststore: /etc/scylla/certs/ca.crt
