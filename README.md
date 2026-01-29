@@ -74,8 +74,8 @@ https://github.com/user-attachments/assets/780f9005-d571-489d-93e3-e61f91dcb0fe
 # cqlls vs Corpo
 
 - Free
-- Open Source language server (under MIT License)
-- Aiming to provide the best experience
+- Open Source (under MIT License)
+- The Best Experience
 - Seamless Integration with Zed && Nvim
 - Written in Rust :D
 
