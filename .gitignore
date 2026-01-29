@@ -8,7 +8,7 @@ panic.log
 TODO.md
 
 # Certs for local testing
-certs/
+*certs/
 
 # Dev .env
 *.env
