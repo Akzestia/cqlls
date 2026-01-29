@@ -21,9 +21,9 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
-use cql_lsp::cqlsh::{CqlSettings, TlsMode};
-use cql_lsp::lsp::{Backend, FormattingSettings};
-use cql_lsp::setup::setup_logger;
+use cqlls::cqlsh::{CqlSettings, TlsMode};
+use cqlls::lsp::{Backend, FormattingSettings};
+use cqlls::setup::setup_logger;
 use log::info;
 use std::collections::HashMap;
 use std::fs::exists;
