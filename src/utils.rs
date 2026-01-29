@@ -1,10 +1,38 @@
+/*
+MIT License
+
+Copyright (c) 2025-2026 アクゼスティア
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
 use crate::consts::*;
 use crate::lsp::Backend;
 use log::info;
 
 impl Backend {
     pub fn is_in_string_literal(line: &str, position: u32) -> bool {
-        let prefix = match line.get(..position as usize) {
+        let byte_pos = line
+            .char_indices()
+            .nth(position as usize)
+            .map(|(i, _)| i)
+            .unwrap_or(line.len());
+        let prefix = match line.get(..byte_pos) {
             Some(p) => p,
             None => return false,
         };
@@ -37,12 +65,13 @@ impl Backend {
         let mut is_type = false;
 
         for w in split {
-            // Fix List<>, frozen<>, map<>, set<>
-            if CQL_TYPES_LWC.contains(&w.to_lowercase().replace(",", "").trim().to_string())
-                || w.starts_with("set")
-                || w.starts_with("map")
-                || w.starts_with("list")
-                || w.starts_with("frozen")
+            let wlw = w.to_lowercase();
+            if CQL_TYPES_LWC.contains(&wlw.replace(",", "").trim().to_string())
+                || wlw.starts_with("set")
+                || wlw.starts_with("map")
+                || wlw.starts_with("list")
+                || wlw.starts_with("frozen")
+                || wlw.starts_with("\'")
             {
                 info!("{} ^^", w.to_lowercase().to_string());
                 is_type = true;
@@ -150,7 +179,7 @@ impl Backend {
         let mut top_line = false;
         let mut bottom_line = false;
 
-        while up_index > 0 {
+        while up_index > 0 && up_index < lines.len() {
             if !top_line && lines[up_index].contains("/*") {
                 top_line = true;
             }
@@ -165,11 +194,11 @@ impl Backend {
             up_index -= 1;
         }
 
-        if !top_line && lines[up_index].contains("/*") {
+        if up_index < line.len() && !top_line && lines[up_index].contains("/*") {
             top_line = true;
         }
 
-        if !top_line && lines[up_index].contains("*/") {
+        if up_index < line.len() && !top_line && lines[up_index].contains("*/") {
             return false;
         }
 
@@ -196,7 +225,6 @@ impl Backend {
         false
     }
 
-    // Excluding /* && */
     pub fn is_line_in_multiline_comment(
         &self,
         line: &str,
@@ -228,11 +256,11 @@ impl Backend {
             up_index -= 1;
         }
 
-        if !top_line && lines[up_index].contains("/*") {
+        if up_index < line.len() && !top_line && lines[up_index].contains("/*") {
             top_line = true;
         }
 
-        if !top_line && lines[up_index].contains("*/") {
+        if up_index < line.len() && !top_line && lines[up_index].contains("*/") {
             return false;
         }
 
@@ -270,7 +298,7 @@ impl Backend {
             return false;
         }
 
-        if index == 0 || index == lines.len() - 1 {
+        if index == 0 || index >= lines.len() - 1 {
             return false;
         }
 
@@ -286,69 +314,50 @@ impl Backend {
         let mut top_bracket = false;
         let mut bottom_bracket = false;
 
-        while index_up > 0 {
+        loop {
             let up_line = &lines[index_up];
-            if !top_bracket && (up_line.contains("{") || up_line.contains("(")) {
+            if up_line.contains("{") || up_line.contains("(") {
                 top_bracket = true;
-            }
-
-            if !top_bracket && (up_line.contains("}") || up_line.contains(")")) {
-                return false;
-            }
-
-            if !top_bracket && self.line_contains_cql_kw(up_line) {
-                return false;
-            }
-
-            if top_bracket {
                 break;
             }
 
+            if up_line.contains("}") || up_line.contains(")") {
+                return false;
+            }
+
+            if self.line_contains_cql_kw(up_line) {
+                return false;
+            }
+
+            if index_up == 0 {
+                break;
+            }
             index_up -= 1;
-        }
-
-        let up_line = &lines[index_up];
-        if !top_bracket && (up_line.contains("{") || up_line.contains("(")) {
-            top_bracket = true;
-        }
-
-        if !top_bracket && (up_line.contains("}") || up_line.contains(")")) {
-            return false;
-        }
-
-        if !top_bracket && self.line_contains_cql_kw(up_line) {
-            return false;
         }
 
         while index_down < lines.len() {
             let down_line = &lines[index_down];
 
-            if !bottom_bracket && (down_line.contains("}") || down_line.contains(")")) {
+            if down_line.contains("}") || down_line.contains(")") {
                 bottom_bracket = true;
-            }
-
-            if !bottom_bracket && (down_line.contains("{") || down_line.contains("(")) {
-                return false;
-            }
-
-            if !bottom_bracket && down_line.contains(";") {
-                return false;
-            }
-
-            if !bottom_bracket && self.line_contains_cql_kw(down_line) {
-                return false;
-            }
-
-            if bottom_bracket {
                 break;
             }
+
+            if down_line.contains("{") || down_line.contains("(") {
+                return false;
+            }
+
+            if down_line.contains(";") {
+                return false;
+            }
+
+            if self.line_contains_cql_kw(down_line) {
+                return false;
+            }
+
             index_down += 1;
         }
 
-        if top_bracket && bottom_bracket {
-            return true;
-        }
-
-        false
+        top_bracket && bottom_bracket
     }
 }
