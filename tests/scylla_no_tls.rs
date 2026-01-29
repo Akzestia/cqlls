@@ -1,11 +1,10 @@
-use cql_lsp::cqlsh::{CqlSettings, check_connection, query_keyspaces};
-
-const SCYLLA_HOST: &str = "127.0.0.1:9042";
-
+use cqlls::cqlsh::{CqlSettings, check_connection, query_keyspaces};
 
 #[tokio::test]
 async fn test_connection_no_tls() {
-    let config = CqlSettings::new();
+    let mut config = CqlSettings::new();
+
+    config.url = "127.0.0.1:9043".to_string();
 
     let result = check_connection(&config).await;
 
@@ -14,7 +13,9 @@ async fn test_connection_no_tls() {
 
 #[tokio::test]
 async fn test_query_keyspaces_no_tls() {
-    let config = CqlSettings::new();
+    let mut config = CqlSettings::new();
+
+    config.url = "127.0.0.1:9043".to_string();
 
     let result = check_connection(&config).await;
 
