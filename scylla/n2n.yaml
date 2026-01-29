@@ -1,6 +1,0 @@
-server_encryption_options:
-  internode_encryption: <none|rack|dc|all|transitional>
-  certificate: <path to a PEM-encoded certificate file>
-  keyfile: <path to a PEM-encoded key for certificate>
-  truststore: <path to a PEM-encoded trust store> (optional)
-  certficate_revocation_list: <path to a PEM-encoded CRL file> (optional)
