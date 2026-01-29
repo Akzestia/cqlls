@@ -52,7 +52,7 @@ sleep 5
 
 echo "=== Copying cqlshrc to scylla-tls ==="
 docker exec scylla-tls mkdir -p /var/lib/scylla/.cassandra
-docker cp ./cqlshrc scylla-tls:/var/lib/scylla/.cassandra/cqlshrc
+docker cp ./scylla/cqlshrc scylla-tls:/var/lib/scylla/.cassandra/cqlshrc
 
 echo "=== Waiting for ScyllaDB to be ready ==="
 echo "This may take 30-60 seconds..."
