@@ -4,13 +4,8 @@
 [![Support me on Patreon](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Fshieldsio-patreon.vercel.app%2Fapi%3Fusername%3Dakzestia%26type%3Dpatrons&style=for-the-badge)](https://patreon.com/akzestia)
 
 - [Nvim](https://github.com/Akzestia/nvim-cql-v2)
-- [Zed](https://github.com/Akzestia/zed-cql)
-
+  
 The Best Open Source **language server** for CQL (Cassandra Query Language) ^_^
-
-https://github.com/user-attachments/assets/780f9005-d571-489d-93e3-e61f91dcb0fe
-
-https://github.com/user-attachments/assets/ef6d9d5b-3d4b-48b4-9493-9599ba436323
 
 > [!TIP]
 > CQL is now supported by GitHub | [github-linguist v9.4.0](https://github.com/github-linguist/linguist/releases/tag/v9.4.0)
@@ -74,7 +69,7 @@ https://github.com/user-attachments/assets/ef6d9d5b-3d4b-48b4-9493-9599ba436323
 - Free
 - Open Source (under MIT License)
 - The Best Experience
-- Seamless Integration with Zed && Nvim
+- Seamless Integration with Nvim
 - Written in Rust :D
 
 # Installation
