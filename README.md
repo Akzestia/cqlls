@@ -8,14 +8,6 @@ The Best Open Source **language server** for CQL (Cassandra Query Language) ^_^
 
 - [Nvim](https://github.com/Akzestia/nvim-cql-v2)
 
-### cqlls vs Corpo
-
-- Free
-- Open Source (under MIT License)
-- The Best Experience
-- Seamless Integration with Nvim
-- Written in Rust :D
-
 ### Installation
 
 Install Language Server binary using cargo
