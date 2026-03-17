@@ -17,35 +17,35 @@ openssl genrsa -out certs/ca.key 4096
 openssl req -x509 -new -nodes -key certs/ca.key -sha256 -days 365 -out certs/ca.crt -subj "/CN=TestCA"
 
 # Generate server cert with SAN
-cat > certs/server.ext << EOF
+cat >certs/server.ext <<EOF
 subjectAltName = DNS:localhost, IP:127.0.0.1
 EOF
 
 openssl genrsa -out certs/server.key 4096
 openssl req -new -key certs/server.key -out certs/server.csr -subj "/CN=localhost"
 openssl x509 -req -in certs/server.csr -CA certs/ca.crt -CAkey certs/ca.key -CAcreateserial \
-  -out certs/server.crt -days 365 -sha256 -extfile certs/server.ext
+    -out certs/server.crt -days 365 -sha256 -extfile certs/server.ext
 
 # Generate client cert (for mTLS)
 openssl genrsa -out certs/client.key 4096
 openssl req -new -key certs/client.key -out certs/client.csr -subj "/CN=client"
 openssl x509 -req -in certs/client.csr -CA certs/ca.crt -CAkey certs/ca.key -CAcreateserial \
-  -out certs/client.crt -days 365 -sha256
+    -out certs/client.crt -days 365 -sha256
 
-echo "=== Starting ScyllaDB without TLS on port 9043 ==="
-docker run --name scylla-notls -d -p 9043:9042 \
-  scylladb/scylla \
-  --smp 1 \
-  --memory 750M \
-  --overprovisioned 1 \
-  --developer-mode 1
+echo "=== Starting ScyllaDB without TLS on port 9044 ==="
+docker run --name scylla-notls -d -p 9044:9042 \
+    scylladb/scylla \
+    --smp 1 \
+    --memory 750M \
+    --overprovisioned 1 \
+    --developer-mode 1
 
-echo "=== Starting ScyllaDB with TLS on port 9042 ==="
+echo "=== Starting ScyllaDB with TLS on port 9043 ==="
 docker run --name scylla-tls -d \
-  -p 9042:9042 \
-  -v "${PWD}/certs:/etc/scylla/certs" \
-  -v "${PWD}/scylla/scylla.yaml:/etc/scylla/scylla.yaml" \
-  scylladb/scylla
+    -p 9043:9042 \
+    -v "${PWD}/certs:/etc/scylla/certs" \
+    -v "${PWD}/scylla/scylla.yaml:/etc/scylla/scylla.yaml" \
+    scylladb/scylla
 
 echo "=== Waiting for scylla-tls container to start ==="
 sleep 5
@@ -59,15 +59,15 @@ echo "This may take 30-60 seconds..."
 
 echo -n "Waiting for scylla-notls"
 until docker exec scylla-notls cqlsh -e "DESCRIBE KEYSPACES" 2>/dev/null; do
-  echo -n "."
-  sleep 5
+    echo -n "."
+    sleep 5
 done
 echo " Ready!"
 
 echo -n "Waiting for scylla-tls"
 until docker exec scylla-tls cqlsh -e "DESCRIBE KEYSPACES" 2>/dev/null; do
-  echo -n "."
-  sleep 5
+    echo -n "."
+    sleep 5
 done
 echo " Ready!"
 
