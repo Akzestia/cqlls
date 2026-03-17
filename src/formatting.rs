@@ -570,7 +570,15 @@ impl Backend {
                 "*/",
             ];
 
-            let starts_with_banned = banned_starts.iter().any(|p| trimmed_lower.starts_with(p));
+            let starts_with_banned = banned_starts.iter().any(|p| {
+                if trimmed_lower.starts_with(p) {
+                    trimmed_lower.len() == p.len()
+                        || !trimmed_lower[p.len()..]
+                            .starts_with(|c: char| c.is_alphanumeric() || c == '_')
+                } else {
+                    false
+                }
+            });
 
             if is_inside_multiline_comment && !is_ml_comment_clause && !starts_with_banned {
                 indices.push(idx);

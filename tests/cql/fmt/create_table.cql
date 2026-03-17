@@ -12,6 +12,28 @@ CREATE TABLE cycling.cyclist_name (
     PRIMARY KEY (id)
 );
 
+use "zed";
+
+CREATE TABLE zed.settings (
+    user_id             UUID PRIMARY KEY,
+    user_name           TEXT,
+    theme:              TEXT,
+    AI_features:        BOOLEAN
+);
+
+INSERT INTO settings (
+    user_id,
+    user_name,
+    theme,
+    AI_features
+)
+VALUES (
+    uuid(),
+    "アクゼスティア",
+    "Catppuccin Espresso",
+    false
+);
+
 CREATE TABLE cycling."addThis" (
     a        int PRIMARY KEY
 );
