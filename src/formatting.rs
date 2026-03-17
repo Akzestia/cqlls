@@ -1070,7 +1070,7 @@ impl Backend {
                     }
                 }
 
-                if let Some(offset_x) = lower.to_lowercase().find(&line_type.to_lowercase()) {
+                if let Some(offset_x) = lower.to_lowercase().rfind(&line_type.to_lowercase()) {
                     info!("\n\nOFFSET: {}, LINE_TYPE: {}\n\n", offset_x, line_type);
                     offsets.push((*index, offset_x));
                     if max_offset_x < offset_x {
