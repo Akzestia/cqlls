@@ -21,6 +21,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
+
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer};
 
@@ -64,6 +65,7 @@ pub struct Backend {
     pub formatting_config: FormattingSettings,
     pub indent: String,
     pub max_line_length: usize,
+    pub diagnostics: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -99,6 +101,10 @@ impl Backend {
     // -----------------------------[Handlers]-----------------------------
 
     // handlers.rs
+
+    // -----------------------------[Diagnostics]-----------------------------
+
+    // diagnostics.rs
 }
 
 #[tower_lsp::async_trait]
@@ -171,6 +177,11 @@ impl LanguageServer for Backend {
                     document.change(uri.clone(), change.text.clone());
                 }
             }
+
+            let diags = self.compute_diagnostics(&change.text).await;
+            self.client
+                .publish_diagnostics(uri.clone(), diags, Some(params.text_document.version))
+                .await;
         }
     }
 
@@ -192,6 +203,15 @@ impl LanguageServer for Backend {
             .write()
             .await
             .insert(uri.clone(), text.clone());
+
+        self.client
+            .log_message(MessageType::INFO, format!("Opened: {}", uri))
+            .await;
+
+        let diags = self.compute_diagnostics(&text).await;
+        self.client
+            .publish_diagnostics(uri.clone(), diags, Some(params.text_document.version))
+            .await;
 
         self.client
             .log_message(MessageType::INFO, format!("Opened: {}", uri))
