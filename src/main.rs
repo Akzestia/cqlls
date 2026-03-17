@@ -36,7 +36,7 @@ use tower_lsp::{LspService, Server};
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Logging Ssettings
-    let enable_logging = std::env::var("CQL_LSP_ENABLE_LOGGING").unwrap_or_else(|_| {
+    let enable_logging = std::env::var("CQL_LS_ENABLE_LOGGING").unwrap_or_else(|_| {
         info!("Logging mode wasn't provided. Setting Logging mode to default(false)");
         "false".to_string()
     });
@@ -53,28 +53,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // DB connection settings
-    let url = std::env::var("CQL_LSP_DB_URL").unwrap_or_else(|_| {
+    let url = std::env::var("CQL_LS_DB_URL").unwrap_or_else(|_| {
         info!("Db url wasn't provided. Setting url to default(127.0.0.1)");
         "127.0.0.1".to_string()
     });
 
-    let pswd = std::env::var("CQL_LSP_DB_PASSWD").unwrap_or_else(|_| {
+    let pswd = std::env::var("CQL_LS_DB_PASSWD").unwrap_or_else(|_| {
         info!("Db pswd wasn't provided.\nSetting pswd to default(cassandra)");
         "cassandra".to_string()
     });
 
-    let user = std::env::var("CQL_LSP_DB_USER").unwrap_or_else(|_| {
+    let user = std::env::var("CQL_LS_DB_USER").unwrap_or_else(|_| {
         info!("Db user wasn't provided.\nSetting user to default(cassandra)");
         "cassandra".to_string()
     });
 
     // TLS settings
-    let ca_cert_file = std::env::var("CQL_LSP_TLS_CA_CERT_FILE").unwrap_or_else(|_| {
+    let ca_cert_file = std::env::var("CQL_LS_TLS_CA_CERT_FILE").unwrap_or_else(|_| {
         info!("Cert file wasn't provided, TLS && mTLS are disabled");
         "".to_string()
     });
 
-    let mut tls_mode = std::env::var("CQL_LSP_TLS_MODE").unwrap_or_else(|_| {
+    let mut tls_mode = std::env::var("CQL_LS_TLS_MODE").unwrap_or_else(|_| {
         info!("TLS mode wasn't set\nSetting default TLS mode to none");
         "none".to_string()
     });
@@ -85,9 +85,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Formatting settings
-    let type_alignment_offset = std::env::var("CQL_LSP_TYPE_ALIGNMENT_OFFSET").unwrap_or_else(|_| {
+    let type_alignment_offset = std::env::var("CQL_LS_TYPE_ALIGNMENT_OFFSET").unwrap_or_else(|_| {
        info!("Type alignment offset wasn't provided.\n Setting type alignment offset to default 7");
        "7".to_string()
+    });
+
+    let diagnostics = std::env::var("CQL_LS_DIAGNOSTICS").unwrap_or_else(|_| {
+        info!("Diagnostics env var wasn't set.\nDisabling diagnostics");
+        "false".to_string()
     });
 
     let tls = match tls_mode.as_str() {
@@ -95,6 +100,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             ca_cert_path: ca_cert_file,
         },
         _ => TlsMode::None,
+    };
+
+    let diagnostics_enabled = match diagnostics.as_str() {
+        "true" => true,
+        "false" => false,
+        _ => false,
     };
 
     let formatting_settings = FormattingSettings::from_env(&type_alignment_offset);
@@ -119,6 +130,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         formatting_config: formatting_settings,
         indent: "    ".to_string(),
         max_line_length: 20,
+        diagnostics: diagnostics_enabled,
     });
 
     Server::new(stdin, stdout, socket).serve(service).await;
