@@ -21,22 +21,30 @@ Add env variables to your shell config
 ```sh
 # Adds cqlls to your path
 export PATH="$HOME/.cargo/bin:$PATH"
+```
 
-# Env variables used by the language server
-
+Env variables used by the language server
+```sh
 # Db related
-export CQL_LSP_DB_URL="172.17.0.2"
-export CQL_LSP_DB_PASSWD="cassandra"
-export CQL_LSP_DB_USER="cassandra"
-export CQL_LSP_TLS_MODE="none|tls"
-export CQL_LSP_TLS_CA_CERT_FILE=""
+export CQL_LS_DB_URL="172.17.0.2"
+export CQL_LS_DB_PASSWD="cassandra"
+export CQL_LS_DB_USER="cassandra"
+export CQL_LS_TLS_MODE="none|tls"
+export CQL_LS_TLS_CA_CERT_FILE=""
 
 # Logging and debugging
-export CQL_LSP_ENABLE_LOGGING="false"
+export CQL_LS_ENABLE_LOGGING="false"
 
 # Formatting related settings
-export CQL_LSP_TYPE_ALIGNMENT_OFFSET="7"
+export CQL_LS_TYPE_ALIGNMENT_OFFSET="7"
+
+# Diagnostics
+export CQL_LS_DIAGNOSTICS="false"
 ```
+
+> [!TIP]
+> Diagnostics are currently available as an experimental feature, </br>
+> and aren't stable yet ^_^
 
 ### License
 
