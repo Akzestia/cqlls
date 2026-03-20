@@ -1,7 +1,7 @@
 [package]
 name = "cqlls"
 description = "The Best lanugage server for CQL (Cassandra Query Lanugage) ^_^"
-version = "4.0.0"
+version = "4.0.1"
 authors = ["アクゼスティア <akzestia@gmail.com>"]
 license = "MIT"
 readme = "README.md"
@@ -12,7 +12,7 @@ edition = "2024"
 
 [dependencies]
 chrono = "0.4.40"
-clap = "4.5.54"
+clap = { version = "4.5.54", features = ["derive"] }
 dirs = "6.0.0"
 fern = "0.7.1"
 futures = "0.3.31"
