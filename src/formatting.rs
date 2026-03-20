@@ -1,26 +1,9 @@
 /*
-MIT License
+    MIT License
 
-Copyright (c) 2025-2026 アクゼスティア
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+    Copyright (c) 2026 アクゼスティア
 */
+
 use log::info;
 use tower_lsp::lsp_types::*;
 
@@ -366,6 +349,32 @@ impl Backend {
         }
 
         false
+    }
+
+    pub async fn indent_comments_inside_crteate_table(
+        &self,
+        lines: &mut [String],
+        document_url: &Url,
+    ) {
+        info!("Checking for comment indent");
+        for line in lines.iter_mut().enumerate() {
+            let is_inside_create_table = self
+                .is_inside_create_table_no_position(line.0, document_url)
+                .await;
+
+            let trimmed_line = line.1.trim();
+            info!(
+                "COMMENT INDENT: {}\nInside table?: {is_inside_create_table}",
+                trimmed_line
+            );
+
+            if is_inside_create_table
+                && (trimmed_line.starts_with("--") || trimmed_line.starts_with("//"))
+            {
+                info!("Indenting comment on line {}", line.0 + 1);
+                line.1.insert_str(0, &" ".repeat(4));
+            }
+        }
     }
 
     pub async fn add_tabs_to_cql_types(&self, lines: &mut Vec<String>, document_url: &Url) {
@@ -1115,6 +1124,8 @@ impl Backend {
             .await;
         self.format_insert(&mut working_vec, document_url).await;
         self.add_tabs_to_function_keywords(&mut working_vec, document_url)
+            .await;
+        self.indent_comments_inside_crteate_table(&mut working_vec, document_url)
             .await;
 
         info!("Working Vec Size: {}", working_vec.len());
