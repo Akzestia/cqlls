@@ -8,3 +8,4 @@ pub mod lsp;
 pub mod setup;
 pub mod tree_sitter;
 pub mod utils;
+pub mod version;
