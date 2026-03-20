@@ -1,16 +1,22 @@
+/*
+    MIT License
+
+    Copyright (c) 2026 アクゼスティア
+*/
+
 use crate::tree_sitter::TS_CQL;
 use tower_lsp::lsp_types::*;
 use tree_sitter::Node;
 
 use crate::lsp::Backend;
 
+// TODO: Add better docs
 impl Backend {
     pub async fn compute_diagnostics(&self, text: &str) -> Vec<Diagnostic> {
         if !self.diagnostics {
             return vec![];
         }
 
-        // Parse via shared parser
         let mut parser = TS_CQL.lock().await;
         let tree = match parser.parse(text, None) {
             Some(t) => t,
