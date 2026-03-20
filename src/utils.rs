@@ -4,7 +4,7 @@
     Copyright (c) 2026 アクゼスティア
 */
 
-rsuse crate::consts::*;
+use crate::consts::*;
 use crate::lsp::Backend;
 use log::info;
 
