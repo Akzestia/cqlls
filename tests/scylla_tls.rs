@@ -1,3 +1,9 @@
+/*
+    MIT License
+
+    Copyright (c) 2026 アクゼスティア
+*/
+
 use cqlls::cqlsh::{CqlSettings, check_connection, query_keyspaces};
 
 const SCYLLA_HOST: &str = "127.0.0.1:9042";
