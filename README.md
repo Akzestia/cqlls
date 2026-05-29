@@ -4,8 +4,6 @@
 
 [![Crates.io](https://img.shields.io/crates/v/cqlls.svg)](https://crates.io/crates/cqlls)</br>
 
-[English](README.md) | [日本語](README_jap.md) | [台灣中文](README_tw.md)
-
 The Best Open Source **language server** for CQL (Cassandra Query Language) ^_^ 
 
   <img width="354" height="373.5" alt="image" src="https://media.tenor.com/YOphBzO0MfoAAAAi/japanese-animation.gif" />
