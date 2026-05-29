@@ -36,7 +36,7 @@ db {
     preferred_dc: "us-east-1"
     known_nodes: {
         "127.0.0.1:9042",
-        "127.0.0.1:9042"
+        "127.0.0.1:9043"
     }
 
     tls: "none|tls|mtls"
