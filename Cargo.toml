@@ -1,7 +1,7 @@
 [package]
 name = "cqlls"
 description = "The Best lanugage server for CQL (Cassandra Query Lanugage) ^_^"
-version = "4.0.1"
+version = "4.1.0"
 authors = ["アクゼスティア <akzestia@gmail.com>"]
 license = "MIT"
 readme = "README.md"
