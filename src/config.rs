@@ -34,7 +34,25 @@ impl Default for CqllsConfig {
         Self {
             db_type: DbType::Scylla,
             preferred_dc: String::new(),
-            known_nodes: vec![],
+            known_nodes: vec!["127.0.0.1:9042".to_string()],
+            tls: TlsMode::None,
+            ca_cert: String::new(),
+            user: "cassandra".to_string(),
+            pswd: "cassandra".to_string(),
+            type_padding: 8,
+            indent: 4,
+            features: HashMap::new(),
+            logging: false,
+        }
+    }
+}
+
+impl CqllsConfig {
+    pub fn with_knodes(nodes: Vec<String>) -> Self {
+        Self {
+            db_type: DbType::Scylla,
+            preferred_dc: String::new(),
+            known_nodes: nodes,
             tls: TlsMode::None,
             ca_cert: String::new(),
             user: "cassandra".to_string(),
@@ -133,6 +151,7 @@ pub fn parse_config(src: &str) -> Result<CqllsConfig, ParseError> {
                     }
 
                     if text.starts_with("known_nodes") {
+                        cfg.known_nodes.clear();
                         i += 1;
                         while i < lines.len() {
                             let (ln, inner) = lines[i];
