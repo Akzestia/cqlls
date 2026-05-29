@@ -10,10 +10,15 @@ use tree_sitter::Node;
 
 use crate::lsp::Backend;
 
-// TODO: Add better docs
 impl Backend {
     pub async fn compute_diagnostics(&self, text: &str) -> Vec<Diagnostic> {
-        if !self.diagnostics {
+        if !self
+            .config
+            .features
+            .get("diagnostics")
+            .copied()
+            .unwrap_or(false)
+        {
             return vec![];
         }
 
