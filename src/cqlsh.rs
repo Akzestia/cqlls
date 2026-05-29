@@ -141,6 +141,9 @@ async fn build_session(config: &CqllsConfig) -> Result<Session, Box<dyn std::err
 pub async fn query_keyspaces(
     config: &CqllsConfig,
 ) -> Result<Vec<KeySpace>, Box<dyn std::error::Error>> {
+    if !config.has_feature("context_aware_completions") {
+        return Ok(vec![]);
+    }
     info!("Start transaction");
     let session = build_session(config).await?;
     let select_statement: Statement = Statement::new("SELECT * FROM system_schema.keyspaces;");
@@ -167,6 +170,10 @@ pub async fn query_keyspaces(
 pub async fn query_g_fields(
     config: &CqllsConfig,
 ) -> Result<Vec<Column>, Box<dyn std::error::Error>> {
+    if !config.has_feature("context_aware_completions") {
+        return Ok(vec![]);
+    }
+
     let session = build_session(config).await?;
     let mut items = Vec::<Column>::new();
     let tables = query_g_tables(config).await?;
@@ -206,6 +213,10 @@ pub async fn query_keyspace_scoped_tables(
     config: &CqllsConfig,
     keyspace: &str,
 ) -> Result<Vec<Table>, Box<dyn std::error::Error>> {
+    if !config.has_feature("context_aware_completions") {
+        return Ok(vec![]);
+    }
+
     let session = build_session(config).await?;
     let query = format!(
         "SELECT keyspace_name, table_name FROM system_schema.tables WHERE keyspace_name = '{keyspace}';"
@@ -228,6 +239,10 @@ pub async fn query_keyspace_scoped_tables(
 pub async fn query_g_tables(
     config: &CqllsConfig,
 ) -> Result<Vec<Table>, Box<dyn std::error::Error>> {
+    if !config.has_feature("context_aware_completions") {
+        return Ok(vec![]);
+    }
+
     let keyspaces = query_keyspaces(&config).await?;
     let mut items = Vec::<Table>::new();
 
@@ -243,6 +258,10 @@ pub async fn query_keyspace_scoped_fields(
     config: &CqllsConfig,
     keyspace: &str,
 ) -> Result<Vec<Column>, Box<dyn std::error::Error>> {
+    if !config.has_feature("context_aware_completions") {
+        return Ok(vec![]);
+    }
+
     let session = build_session(config).await?;
     let select_tables_query =
         format!("SELECT table_name FROM system_schema.tables WHERE keyspace_name = '{keyspace}';");
@@ -289,6 +308,10 @@ pub async fn query_hard_scoped_fields(
     keyspace_name: &str,
     table_name: &str,
 ) -> Result<Vec<Column>, Box<dyn std::error::Error>> {
+    if !config.has_feature("context_aware_completions") {
+        return Ok(vec![]);
+    }
+
     let session = build_session(config).await?;
     let query = format!(
         "SELECT column_name, type  FROM system_schema.columns WHERE keyspace_name = '{}' AND table_name = '{}';",
@@ -330,6 +353,10 @@ pub async fn query_hard_scoped_fields(
 pub async fn query_aggregates(
     config: &CqllsConfig,
 ) -> Result<Vec<Aggregate>, Box<dyn std::error::Error>> {
+    if !config.has_feature("context_aware_completions") {
+        return Ok(vec![]);
+    }
+
     let session = build_session(config).await?;
     let query = format!("SELECT keyspace_name, aggregate_name FROM system_schema.aggregates;");
 
@@ -366,6 +393,10 @@ pub async fn query_aggregates(
 pub async fn query_functions(
     config: &CqllsConfig,
 ) -> Result<Vec<Function>, Box<dyn std::error::Error>> {
+    if !config.has_feature("context_aware_completions") {
+        return Ok(vec![]);
+    }
+
     let session = build_session(config).await?;
     let query = format!("SELECT keyspace_name, function_name FROM system_schema.functions;");
 
@@ -397,6 +428,10 @@ pub async fn query_functions(
     options
 */
 pub async fn query_indexes(config: &CqllsConfig) -> Result<Vec<Index>, Box<dyn std::error::Error>> {
+    if !config.has_feature("context_aware_completions") {
+        return Ok(vec![]);
+    }
+
     let session = build_session(config).await?;
     let query = format!("SELECT keyspace_name, index_name FROM system_schema.indexes;");
 
@@ -427,6 +462,10 @@ pub async fn query_indexes(config: &CqllsConfig) -> Result<Vec<Index>, Box<dyn s
     field_type
 */
 pub async fn query_types(config: &CqllsConfig) -> Result<Vec<Type>, Box<dyn std::error::Error>> {
+    if !config.has_feature("context_aware_completions") {
+        return Ok(vec![]);
+    }
+
     let session = build_session(config).await?;
     let query = format!("SELECT keyspace_name, type_name FROM system_schema.types;");
 
@@ -473,6 +512,10 @@ pub async fn query_types(config: &CqllsConfig) -> Result<Vec<Type>, Box<dyn std:
     where_clause
 */
 pub async fn query_views(config: &CqllsConfig) -> Result<Vec<View>, Box<dyn std::error::Error>> {
+    if !config.has_feature("context_aware_completions") {
+        return Ok(vec![]);
+    }
+
     let session = build_session(config).await?;
 
     let query = format!("SELECT keyspace_name, view_name FROM system_schema.views;");
