@@ -36,8 +36,8 @@ fn test_parse_full() {
     assert_eq!(cfg.ca_cert, "/path/to/ca_cert");
     assert_eq!(cfg.type_padding, 8);
     assert_eq!(cfg.indent, 4);
-    assert_eq!(cfg.features["context_aware_completions"], true);
-    assert_eq!(cfg.features["diagnostics"], false);
+    assert_eq!(cfg.has_feature("context_aware_completions"), true);
+    assert_eq!(cfg.has_feature("diagnostics"), false);
     assert!(cfg.logging);
 }
 
