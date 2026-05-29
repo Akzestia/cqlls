@@ -28,6 +28,7 @@ tower-lsp = "0.20.0"
 tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
 tree-sitter = "0.25.3"
 tttx-tree-sitter-cql = "0.1.0"
+url = "2.5.8"
 
 [lib]
 path = "src/lib.rs"
