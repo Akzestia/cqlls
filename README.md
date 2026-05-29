@@ -17,8 +17,6 @@ The Best Open Source **language server** for CQL (Cassandra Query Language) ^_^
 
 ### Installation
 
-Install Language Server binary using cargo
-
 ```sh
 cargo install cqlls
 ```
