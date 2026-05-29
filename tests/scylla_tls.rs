@@ -4,13 +4,14 @@
     Copyright (c) 2026 アクゼスティア
 */
 
-use cqlls::cqlsh::{CqlSettings, check_connection, query_keyspaces};
-
-const SCYLLA_HOST: &str = "127.0.0.1:9042";
+use cqlls::config::CqllsConfig;
+use cqlls::cqlsh::{check_connection, query_keyspaces};
 
 #[tokio::test]
 async fn test_connection_with_tls() {
-    let config = CqlSettings::new().with_tls("./certs/ca.crt");
+    let mut config = CqllsConfig::default();
+
+    config.known_nodes.push("127.0.0.1".to_string());
 
     let session = check_connection(&config).await;
 
@@ -18,7 +19,7 @@ async fn test_connection_with_tls() {
         Ok(s) => {
             println!("Keyspaces: {:?}", s);
         }
-        _ => {}
+        _ => (),
     }
 
     assert!(session.is_ok(), "Failed to connect: {:?}", session.err());
@@ -27,8 +28,12 @@ async fn test_connection_with_tls() {
 
 #[tokio::test]
 async fn test_query_data() {
-    let config = CqlSettings::new().with_tls("./certs/ca.crt");
+    let mut config = CqllsConfig::default();
+
+    config.known_nodes.push("127.0.0.1".to_string());
+
     let result = check_connection(&config).await;
+
     assert!(result.is_ok(), "Failed to connect: {:?}", result.err());
 
     let ksp = query_keyspaces(&config).await;

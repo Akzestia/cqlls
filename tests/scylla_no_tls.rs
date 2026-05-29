@@ -4,13 +4,14 @@
     Copyright (c) 2026 アクゼスティア
 */
 
-use cqlls::cqlsh::{CqlSettings, check_connection, query_keyspaces};
+use cqlls::config::CqllsConfig;
+use cqlls::cqlsh::{check_connection, query_keyspaces};
 
 #[tokio::test]
 async fn test_connection_no_tls() {
-    let mut config = CqlSettings::new();
+    let mut config = CqllsConfig::default();
 
-    config.url = "127.0.0.1:9043".to_string();
+    config.known_nodes.push("127.0.0.1".to_string());
 
     let result = check_connection(&config).await;
 
@@ -19,9 +20,9 @@ async fn test_connection_no_tls() {
 
 #[tokio::test]
 async fn test_query_keyspaces_no_tls() {
-    let mut config = CqlSettings::new();
+    let mut config = CqllsConfig::default();
 
-    config.url = "127.0.0.1:9043".to_string();
+    config.known_nodes.push("127.0.0.1".to_string());
 
     let result = check_connection(&config).await;
 
