@@ -104,6 +104,99 @@ debug {
 }
 ```
 
+### db
+
+Just configures your database connection.
+
+### fmt
+
+Indent vs padding
+
+```cql
+-- Inside create table
+CREATE TABLE IF NOT EXISTS users (
+/*Indent*/ id           /*Padding*/ uuid,
+/*Indent*/ display_name /*Padding*/ text,
+);
+```
+
+```cql
+-- Inside insert
+INSERT INTO users (
+/*Indent*/ user_id,
+/*Indent*/ username,
+/*Indent*/ contact,
+/*Indent*/ addresses,
+/*Indent*/ tags,
+/*Indent*/ preferences,
+/*Indent*/ last_login,
+/*Indent*/ created_at
+)
+VALUES (
+/*Indent*/ uuid(),
+/*Indent*/ 'bob_builder',
+/*Indent*/ {
+/*Indent*/ /*Indent*/ email: 'bob@example.com',
+/*Indent*/ /*Indent*/ phone: '+1-555-0202',
+/*Indent*/ /*Indent*/ preferred_time: {
+/*Indent*/ /*Indent*/ /*Indent*/ 'morning'
+/*Indent*/ /*Indent*/ }
+/*Indent*/ },
+/*Indent*/ {
+/*Indent*/ /*Indent*/ 'home': {
+/*Indent*/ /*Indent*/ /*Indent*/ street: '789 Oak Ave',
+/*Indent*/ /*Indent*/ /*Indent*/ city: 'Austin',
+/*Indent*/ /*Indent*/ /*Indent*/ zip_code: '73301',
+/*Indent*/ /*Indent*/ /*Indent*/ country: 'USA'
+/*Indent*/ /*Indent*/ }
+/*Indent*/ },
+/*Indent*/ {
+/*Indent*/ /*Indent*/ 'verified',
+/*Indent*/ /*Indent*/ 'beta-tester'
+/*Indent*/ },
+/*Indent*/ {
+/*Indent*/ /*Indent*/ 'theme': 'light',
+/*Indent*/ /*Indent*/ 'language': 'en',
+/*Indent*/ /*Indent*/ 'notifications': 'disabled'
+/*Indent*/ },
+/*Indent*/ toTimestamp(now()),
+/*Indent*/ toTimestamp(now())
+);
+```
+
+Padding is calculated in the following way for each field:
+
+curr_field_padding = padding + max_field_len - curr_field_len;
+
+```cql
+-- Assuming padding is set to 8, max_field_len = 12 (display_name)
+CREATE TABLE IF NOT EXISTS users (
+/*Indent*/  id           /* 8 + 12 - 2  = 18 */  uuid,
+/*Indent*/  display_name /* 8 + 12 - 12 = 8  */  text,
+);
+```
+
+### features
+
+Used to enable/disable a specific feature.
+
+Currently `cqlls` has 2 features which are
+
+- context_aware_completions
+  - When enabled, `cqlls` will attempt to query the database, and provide a context aware completions, such as table names, keyspaces, table fields etc.
+- diagnostics
+  - When enabled, shows diagnostics. 
+
+### debug
+
+Enable/Disable logging.
+
+Log file can be found at:
+
+- MacOS: `~/Library/Application\ Support/cqlls`
+- Linux: `~/.local/share/cqlls`
+
+-------
 
 > [!TIP]
 > Diagnostics are currently available as an experimental feature, </br>
