@@ -1253,62 +1253,73 @@ impl Backend {
         return Ok(Some(CompletionResponse::Array(items)));
     }
 
-    pub async fn is_inside_create_table_no_position(
-        &self,
-        line_index: usize,
-        document_url: &Url,
-    ) -> bool {
-        let documents = self.documents.read().await;
+    pub fn is_inside_create_table_no_position(&self, line_index: usize, lines: &[String]) -> bool {
+        if line_index >= lines.len() {
+            return false;
+        }
 
-        if let Some(document) = documents.get(document_url) {
-            let lw_doc_text = document;
-            let lines: Vec<&str> = lw_doc_text.split('\n').collect();
+        let current_line = line_index;
+        let mut found_create_table = false;
+        let mut search_index = current_line;
 
-            let current_line = line_index;
-            if current_line >= lines.len() {
+        loop {
+            let line_content = lines[search_index].to_lowercase();
+
+            let stripped = line_content
+                .find("--")
+                .or_else(|| line_content.find("//"))
+                .map(|pos| &line_content[..pos])
+                .unwrap_or(&line_content)
+                .trim()
+                .to_string();
+
+            if stripped.starts_with(")") || stripped.ends_with(";") {
                 return false;
             }
 
-            let mut found_create_table = false;
-            let mut search_index = current_line;
-
-            loop {
-                let line_content = lines[search_index].to_lowercase();
-
-                if (line_content.contains("create table")
-                    || line_content.contains("create table if not exists"))
-                    && line_content.contains("(")
-                    && !line_content.contains(")")
-                {
-                    info!("Found CRT: {}", line_content);
-                    found_create_table = true;
-                    break;
-                }
-
-                if self.line_contains_cql_kw(&line_content) {
-                    return false;
-                }
-
-                if search_index == 0 {
-                    break;
-                }
-                search_index -= 1;
+            if (stripped.contains("create table")
+                || stripped.contains("create table if not exists"))
+                && stripped.contains("(")
+                && !stripped.contains(")")
+            {
+                found_create_table = true;
+                break;
             }
 
-            if !found_create_table {
+            if self.line_contains_cql_kw(&stripped) {
                 return false;
             }
 
-            for i in (current_line + 1)..lines.len() {
-                let line_content = lines[i];
+            if search_index == 0 {
+                break;
+            }
+            search_index -= 1;
+        }
 
-                if self.line_contains_cql_kw(line_content) {
-                    return false;
-                }
+        if !found_create_table {
+            return false;
+        }
 
-                if line_content.contains(")") {
-                    return true;
-                }
+        for i in (current_line + 1)..lines.len() {
+            let line_content = &lines[i];
+
+            let stripped = line_content
+                .find("--")
+                .or_else(|| line_content.find("//"))
+                .map(|pos| &line_content[..pos])
+                .unwrap_or(line_content.as_str())
+                .trim();
+
+            if stripped.is_empty() {
+                continue;
+            }
+
+            if self.line_contains_cql_kw(stripped) {
+                return false;
+            }
+
+            if stripped.contains(")") {
+                return true;
             }
         }
 

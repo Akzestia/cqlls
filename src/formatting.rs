@@ -4,7 +4,7 @@
     Copyright (c) 2026 アクゼスティア
 */
 
-use log::info;
+use log::{error, info};
 use tower_lsp::lsp_types::*;
 
 use crate::{consts::*, lsp::Backend};
@@ -96,7 +96,7 @@ impl Backend {
             let mut is_end_st = false;
 
             if pos + 1 != lines.len() {
-                is_end_st = (line.trim().ends_with(";") || lines[pos + 1].trim().is_empty());
+                is_end_st = line.trim().ends_with(";") || lines[pos + 1].trim().is_empty();
             } else {
                 is_end_st = true
             }
@@ -170,13 +170,14 @@ impl Backend {
 
     pub fn format_insert_statement(&self, input: &str) -> String {
         let mut result = String::new();
-        let mut indent_level = 0;
+        let mut indent_level: usize = 0;
         let mut chars = input.chars().peekable();
         let mut in_string = false;
         let mut string_char = ' ';
-        let mut paren_depth = 0;
+        let mut paren_depth: usize = 0;
         let mut in_function = false;
         let mut after_into_table = false;
+        let indent_unit = " ".repeat(self.config.indent as usize);
 
         while let Some(c) = chars.next() {
             if (c == '\'' || c == '"') && !in_string {
@@ -210,7 +211,7 @@ impl Backend {
                         result.push(c);
                         indent_level += 1;
                         result.push('\n');
-                        result.push_str(&"    ".repeat(indent_level));
+                        result.push_str(&indent_unit.repeat(indent_level));
                     }
                 }
                 ')' => {
@@ -223,7 +224,7 @@ impl Backend {
                     } else {
                         indent_level = indent_level.saturating_sub(1);
                         result.push('\n');
-                        result.push_str(&"    ".repeat(indent_level));
+                        result.push_str(&indent_unit.repeat(indent_level));
                         result.push(c);
                     }
                 }
@@ -231,19 +232,19 @@ impl Backend {
                     result.push(c);
                     indent_level += 1;
                     result.push('\n');
-                    result.push_str(&"    ".repeat(indent_level));
+                    result.push_str(&indent_unit.repeat(indent_level));
                 }
                 '}' => {
                     indent_level = indent_level.saturating_sub(1);
                     result.push('\n');
-                    result.push_str(&"    ".repeat(indent_level));
+                    result.push_str(&indent_unit.repeat(indent_level));
                     result.push(c);
                 }
                 ',' => {
                     result.push(c);
                     if !in_function {
                         result.push('\n');
-                        result.push_str(&"    ".repeat(indent_level));
+                        result.push_str(&indent_unit.repeat(indent_level));
                     }
                     while chars.peek() == Some(&' ') {
                         chars.next();
@@ -252,7 +253,7 @@ impl Backend {
                 ' ' => {
                     if !result.ends_with(' ')
                         && !result.ends_with('\n')
-                        && !result.ends_with("    ")
+                        && !result.ends_with(indent_unit.as_str())
                     {
                         result.push(c);
                     }
@@ -265,16 +266,13 @@ impl Backend {
                 }
             }
         }
-
         result = result.replace("VALUES", "\nVALUES");
-
         result
             .lines()
             .map(|line| line.trim_end())
             .collect::<Vec<&str>>()
             .join("\n")
     }
-
     fn is_function_call(&self, s: &str) -> bool {
         let known_functions = [
             "UUID",
@@ -351,18 +349,15 @@ impl Backend {
         false
     }
 
-    pub async fn indent_comments_inside_crteate_table(
-        &self,
-        lines: &mut [String],
-        document_url: &Url,
-    ) {
+    pub fn indent_comments_inside_crteate_table(&self, lines: &mut [String]) {
         info!("Checking for comment indent");
-        for line in lines.iter_mut().enumerate() {
-            let is_inside_create_table = self
-                .is_inside_create_table_no_position(line.0, document_url)
-                .await;
 
-            let trimmed_line = line.1.trim();
+        let mut indices: Vec<usize> = Vec::new();
+
+        for (idx, line) in lines.iter().enumerate() {
+            let is_inside_create_table = self.is_inside_create_table_no_position(idx, lines);
+
+            let trimmed_line = line.trim();
             info!(
                 "COMMENT INDENT: {}\nInside table?: {is_inside_create_table}",
                 trimmed_line
@@ -371,9 +366,13 @@ impl Backend {
             if is_inside_create_table
                 && (trimmed_line.starts_with("--") || trimmed_line.starts_with("//"))
             {
-                info!("Indenting comment on line {}", line.0 + 1);
-                line.1.insert_str(0, &" ".repeat(4));
+                info!("Indenting comment on line {}", idx + 1);
+                indices.push(idx);
             }
+        }
+
+        for i in indices {
+            lines[i].insert_str(0, &" ".repeat(4));
         }
     }
 
@@ -428,11 +427,11 @@ impl Backend {
                 if let Some(offset) = line.find(typ) {
                     if offset > 0 {
                         if !line[..offset]
-                            .ends_with(&" ".repeat(self.formatting_config.type_alignment_offset))
+                            .ends_with(&" ".repeat((self.config.type_padding - 1) as usize))
                         {
                             line.insert_str(
                                 offset,
-                                &" ".repeat(self.formatting_config.type_alignment_offset),
+                                &" ".repeat((self.config.type_padding - 1) as usize),
                             );
                         }
                     }
@@ -554,9 +553,7 @@ impl Backend {
             let is_ml_comment_clause = self.is_multi_line_comment_clause(trimmed);
             let is_pk_line = trimmed_lower.starts_with("primary");
 
-            let is_in_create_table = self
-                .is_inside_create_table_no_position(idx, document_url)
-                .await;
+            let is_in_create_table = self.is_inside_create_table_no_position(idx, lines);
             let is_in_create_type = self
                 .is_inside_create_type_no_position(idx, document_url)
                 .await;
@@ -609,7 +606,7 @@ impl Backend {
         }
 
         for i in indices {
-            lines[i].insert_str(0, "    ");
+            lines[i].insert_str(0, &" ".repeat(self.config.indent as usize));
         }
     }
 
@@ -1100,6 +1097,39 @@ impl Backend {
         }
     }
 
+    pub async fn format_test(&self, lines: &Vec<&str>, document_url: &Url) -> String {
+        let mut working_vec: Vec<String> = lines.into_iter().map(|s| s.to_string()).collect();
+
+        for index in 0..working_vec.len() {
+            working_vec[index] = working_vec[index].trim().to_string();
+            self.fix_spacing(&mut working_vec[index]);
+            self.fix_duplicate_semi_colon(&mut working_vec[index]);
+        }
+
+        self.fix_semi_colon(&mut working_vec);
+        self.fix_string_literals(&mut working_vec);
+        self.fix_new_lines(&mut working_vec);
+        self.remove_new_lines_from_code_block(&mut working_vec);
+        self.apply_semi_colon(&mut working_vec);
+        self.add_spacing_new_lines(&mut working_vec);
+        self.add_spacing_after_comma(&mut working_vec);
+        self.add_tabs_to_args(&mut working_vec, document_url).await;
+        self.add_new_line_before_pk(&mut working_vec);
+        self.add_tabs_to_cql_types(&mut working_vec, document_url)
+            .await;
+        self.align_types_inside_create_statement(&mut working_vec, document_url)
+            .await;
+        self.format_insert(&mut working_vec, document_url).await;
+        self.add_tabs_to_function_keywords(&mut working_vec, document_url)
+            .await;
+        self.indent_comments_inside_crteate_table(&mut working_vec);
+
+        info!("Working Vec Size: {}", working_vec.len());
+        info!("Original lines: {}", lines.len());
+
+        return working_vec.join("\n");
+    }
+
     pub async fn format_file(&self, lines: &Vec<&str>, document_url: &Url) -> Vec<TextEdit> {
         let mut working_vec: Vec<String> = lines.into_iter().map(|s| s.to_string()).collect();
 
@@ -1125,8 +1155,7 @@ impl Backend {
         self.format_insert(&mut working_vec, document_url).await;
         self.add_tabs_to_function_keywords(&mut working_vec, document_url)
             .await;
-        self.indent_comments_inside_crteate_table(&mut working_vec, document_url)
-            .await;
+        self.indent_comments_inside_crteate_table(&mut working_vec);
 
         info!("Working Vec Size: {}", working_vec.len());
         info!("Original lines: {}", lines.len());

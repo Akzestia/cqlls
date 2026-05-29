@@ -179,17 +179,17 @@ impl Backend {
     pub fn handle_keywords_completion(
         &self,
     ) -> tower_lsp::jsonrpc::Result<Option<CompletionResponse>> {
-        return Ok(Some(CompletionResponse::Array(
+        Ok(Some(CompletionResponse::Array(
             KEYWORDS.iter().cloned().collect(),
-        )));
+        )))
     }
 
     pub fn handle_types_completion(
         &self,
     ) -> tower_lsp::jsonrpc::Result<Option<CompletionResponse>> {
-        return Ok(Some(CompletionResponse::Array(
+        Ok(Some(CompletionResponse::Array(
             TYPES.iter().cloned().collect(),
-        )));
+        )))
     }
 
     pub fn handle_type_modifiers_completion(
@@ -219,7 +219,7 @@ impl Backend {
             ])));
         }
 
-        return Ok(Some(CompletionResponse::Array(vec![
+        Ok(Some(CompletionResponse::Array(vec![
             CompletionItem {
                 label: "PRIMARY KEY".to_string(),
                 kind: Some(CompletionItemKind::KEYWORD),
@@ -260,7 +260,7 @@ impl Backend {
                 insert_text_format: Some(InsertTextFormat::SNIPPET),
                 ..Default::default()
             },
-        ])));
+        ])))
     }
 
     pub async fn handle_fields_completion(
@@ -276,11 +276,11 @@ impl Backend {
             return Ok(Some(response));
         }
 
-        return Ok(Some(CompletionResponse::Array(vec![])));
+        Ok(Some(CompletionResponse::Array(vec![])))
     }
 
     pub fn handle_from_completion(&self) -> tower_lsp::jsonrpc::Result<Option<CompletionResponse>> {
-        return Ok(Some(CompletionResponse::Array(vec![
+        Ok(Some(CompletionResponse::Array(vec![
             CompletionItem {
                 label: "FROM".to_string(),
                 kind: Some(CompletionItemKind::KEYWORD),
@@ -299,7 +299,7 @@ impl Backend {
                 insert_text_format: Some(InsertTextFormat::SNIPPET),
                 ..Default::default()
             },
-        ])));
+        ])))
     }
 
     pub async fn handle_table_completion(
@@ -331,7 +331,7 @@ impl Backend {
             });
         }
 
-        return Ok(Some(CompletionResponse::Array(items)));
+        Ok(Some(CompletionResponse::Array(items)))
     }
 
     pub async fn handle_in_string_graph_engine_completion(
@@ -1062,10 +1062,10 @@ impl Backend {
                     });
                 }
 
-                return Ok(Some(CompletionResponse::Array(items)));
+                Ok(Some(CompletionResponse::Array(items)))
             }
 
-            Err(_) => return Ok(Some(CompletionResponse::Array(vec![]))),
+            Err(_) => Ok(Some(CompletionResponse::Array(vec![]))),
         }
     }
 
@@ -1088,10 +1088,10 @@ impl Backend {
                     });
                 }
 
-                return Ok(Some(CompletionResponse::Array(items)));
+                Ok(Some(CompletionResponse::Array(items)))
             }
 
-            Err(_) => return Ok(Some(CompletionResponse::Array(vec![]))),
+            Err(_) => Ok(Some(CompletionResponse::Array(vec![]))),
         }
     }
 
@@ -1114,10 +1114,10 @@ impl Backend {
                     });
                 }
 
-                return Ok(Some(CompletionResponse::Array(items)));
+                Ok(Some(CompletionResponse::Array(items)))
             }
 
-            Err(_) => return Ok(Some(CompletionResponse::Array(vec![]))),
+            Err(_) => Ok(Some(CompletionResponse::Array(vec![]))),
         }
     }
 
@@ -1140,10 +1140,10 @@ impl Backend {
                     });
                 }
 
-                return Ok(Some(CompletionResponse::Array(items)));
+                Ok(Some(CompletionResponse::Array(items)))
             }
 
-            Err(_) => return Ok(Some(CompletionResponse::Array(vec![]))),
+            Err(_) => Ok(Some(CompletionResponse::Array(vec![]))),
         }
     }
 
@@ -1166,10 +1166,10 @@ impl Backend {
                     });
                 }
 
-                return Ok(Some(CompletionResponse::Array(items)));
+                Ok(Some(CompletionResponse::Array(items)))
             }
 
-            Err(_) => return Ok(Some(CompletionResponse::Array(vec![]))),
+            Err(_) => Ok(Some(CompletionResponse::Array(vec![]))),
         }
     }
 }
