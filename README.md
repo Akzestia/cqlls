@@ -57,7 +57,7 @@ debug {
 }
 ```
 
-If no config file was provided, server will defailt to the following
+If no config file was provided, server will default to the following
 
 ```
 db {
