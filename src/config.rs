@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 #[derive(Debug)]
 pub enum TlsMode {
     None,
@@ -25,7 +23,7 @@ pub struct CqllsConfig {
     pub pswd: String,
     pub type_padding: u8,
     pub indent: u8,
-    pub features: HashMap<String, bool>,
+    pub features: Vec<String>,
     pub logging: bool,
 }
 
@@ -41,7 +39,7 @@ impl Default for CqllsConfig {
             pswd: "cassandra".to_string(),
             type_padding: 8,
             indent: 4,
-            features: HashMap::new(),
+            features: vec!["context_aware_completions".to_string()],
             logging: false,
         }
     }
@@ -59,9 +57,13 @@ impl CqllsConfig {
             pswd: "cassandra".to_string(),
             type_padding: 8,
             indent: 4,
-            features: HashMap::new(),
+            features: vec!["context_aware_completions".to_string()],
             logging: false,
         }
+    }
+
+    pub fn has_feature(&self, feature: &str) -> bool {
+        self.features.iter().any(|f| f == feature)
     }
 }
 
@@ -238,6 +240,7 @@ pub fn parse_config(src: &str) -> Result<CqllsConfig, ParseError> {
             }
 
             "features" => {
+                cfg.features.clear();
                 while i < lines.len() {
                     let (ln, text) = lines[i];
                     if text == "}" {
@@ -245,17 +248,16 @@ pub fn parse_config(src: &str) -> Result<CqllsConfig, ParseError> {
                         break;
                     }
                     let (key, val) = split_kv(text, ln)?;
-                    let flag = match val {
-                        "true" => true,
-                        "false" => false,
+                    match val {
+                        "true" => cfg.features.push(key.to_string()),
+                        "false" => {}
                         other => {
                             return Err(ParseError::new(
                                 ln,
                                 format!("feature value must be true/false, got `{other}`"),
                             ));
                         }
-                    };
-                    cfg.features.insert(key.to_string(), flag);
+                    }
                     i += 1;
                 }
             }
@@ -298,3 +300,4 @@ pub fn parse_config(src: &str) -> Result<CqllsConfig, ParseError> {
 
     Ok(cfg)
 }
+
