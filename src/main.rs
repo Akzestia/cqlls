@@ -1,7 +1,7 @@
 /*
-    MIT License
-    Copyright (c) 2026 アクゼスティア
+    Copyright (c) 2026 アクゼスティア. All Rights Reserved.
 */
+
 use cqlls::config::*;
 use cqlls::logger::setup_logger;
 use cqlls::lsp::Backend;

@@ -1,3 +1,7 @@
+/*
+    Copyright (c) 2026 アクゼスティア. All Rights Reserved.
+*/
+
 use crate::config::*;
 use std::collections::HashMap;
 use std::fs;

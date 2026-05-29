@@ -1,3 +1,7 @@
+/*
+    Copyright (c) 2026 アクゼスティア. All Rights Reserved.
+*/
+
 #[derive(Debug)]
 pub enum TlsMode {
     None,
@@ -300,4 +304,3 @@ pub fn parse_config(src: &str) -> Result<CqllsConfig, ParseError> {
 
     Ok(cfg)
 }
-

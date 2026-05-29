@@ -1,7 +1,5 @@
 /*
-    MIT License
-
-    Copyright (c) 2026 アクゼスティア
+    Copyright (c) 2026 アクゼスティア. All Rights Reserved.
 */
 
 use futures::stream::StreamExt;
