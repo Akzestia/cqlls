@@ -4,35 +4,18 @@
     Copyright (c) 2026 アクゼスティア
 */
 
-use crate::cqlsh::CqlSettings;
+use crate::config::CqllsConfig;
 use std::collections::HashMap;
 use tokio::sync::RwLock;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer};
 
 #[derive(Debug)]
-pub struct FormattingSettings {
-    pub type_alignment_offset: usize,
-}
-
-impl FormattingSettings {
-    pub fn from_env(type_alignment_offset: &str) -> Self {
-        Self {
-            type_alignment_offset: type_alignment_offset.parse().unwrap(),
-        }
-    }
-}
-
-#[derive(Debug)]
 pub struct Backend {
     pub client: Client,
     pub documents: RwLock<HashMap<Url, String>>,
     pub current_document: RwLock<Option<RwLock<Document>>>,
-    pub config: CqlSettings,
-    pub formatting_config: FormattingSettings,
-    pub indent: String,
-    pub max_line_length: usize,
-    pub diagnostics: bool,
+    pub config: CqllsConfig,
 }
 
 #[derive(Debug, Clone)]
@@ -46,7 +29,7 @@ impl Document {
         Self { uri, text }
     }
 
-    fn change(&mut self, uri: Url, text: String) {
+    pub fn change(&mut self, uri: Url, text: String) {
         self.uri = uri;
         self.text = text;
     }
@@ -203,25 +186,6 @@ impl LanguageServer for Backend {
             None => return Ok(None),
         };
 
-        // --------------------------------[EXPERIMENTAL] --------------------------------
-
-        /*
-            Set of experimental features not included in standard build.
-            For more information, see https://github.com/Akzestia/cql-lsp
-        */
-
-        // let ssh_command_sequence = self.should_suggest_command_sequence(line, &position);
-
-        // --------------------------------[EXPERIMENTAL] --------------------------------
-
-        // --------------------------------[STABLE] --------------------------------
-
-        /*
-            Set of features included in standard build.
-            For more information, see https://github.com/Akzestia/cql-lsp
-        */
-
-        // General
         let in_string = Self::is_in_string_literal(line, position.character);
         let ssh_keyspaces = self.should_suggest_keyspaces(line, &position);
         let ssh_graph_types = self.should_suggest_graph_engine_types(line, &position);
@@ -233,26 +197,22 @@ impl LanguageServer for Backend {
         let ssh_create_keywords = self.should_suggest_create_keywords(line, &position);
         let ssh_alter_keywords = self.should_suggest_alter_keywords(line, &position);
 
-        // DROP kw
         let ssh_drop_keywords = self.should_suggest_drop_keywords(line, &position);
         let ssh_drop_keyspaces = self.should_suggest_drop_keyspaces(line, &position);
         let ssh_drop_tables = self.should_suggest_drop_tables(line, &position);
-        // DROP Queries
+
         let ssh_drop_aggregate = self.should_suggest_drop_aggregate(line, &position);
         let ssh_drop_function = self.should_suggest_drop_function(line, &position);
         let ssh_drop_index = self.should_suggest_drop_indexes(line, &position);
         let ssh_drop_type = self.should_suggest_drop_types(line, &position);
         let ssh_drop_view = self.should_suggest_drop_views(line, &position);
 
-        // Types
         let ssh_types = self
             .should_suggest_types_completions(line, &position, &uri)
             .await;
         let ssh_type_modifiers = self
             .should_suggest_type_modifiers(line, &position, &uri)
             .await;
-
-        // --------------------------------[STABLE] --------------------------------
 
         if ssh_keyspaces {
             return if in_string {
