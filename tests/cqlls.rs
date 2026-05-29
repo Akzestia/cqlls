@@ -1,6 +1,5 @@
 use cqlls::config::*;
-use cqlls::test_base::{self, get_pt_pe, run_format};
-use url::Url;
+use cqlls::test_base::{get_pt_pe, run_format};
 
 const SAMPLE: &str = r#"
     db {
