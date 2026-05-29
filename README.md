@@ -37,7 +37,7 @@ db {
     known_nodes: {
         "127.0.0.1:9042",
         "127.0.0.1:9042"
-    },
+    }
 
     tls: "none|tls|mtls"
     ca_cert: "/path/to/ca_cert"
@@ -70,7 +70,7 @@ db {
     preferred_dc: ""
     known_nodes: {
         "127.0.0.1:9042"
-    },
+    }
 
     tls: "none"
     ca_cert: ""
