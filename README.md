@@ -57,6 +57,20 @@ debug {
 }
 ```
 
+> [!TIP]
+> All parts of the config are independent from each other, so if, for example, you only want to configure `formatting settings` and `db url`, you can do something like this:
+> ```txt
+> db {
+>     known_nodes: {
+>         "172.0.0.2:9042"
+>     }
+> }
+>
+> fmt {
+>     indent: 2
+> }
+> ``` 
+
 If no config file was provided, server will default to the following
 
 ```
