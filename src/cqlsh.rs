@@ -19,6 +19,8 @@ use rustls::pki_types::{CertificateDer, pem::PemObject};
 use rustls::{ClientConfig, RootCertStore};
 use std::sync::Arc;
 
+use crate::config::{self, CqllsConfig};
+
 #[derive(DeserializeRow)]
 pub struct Table {
     pub keyspace_name: String,
@@ -36,6 +38,7 @@ pub struct KeySpace {
     pub keyspace_name: String,
     pub durable_writes: bool,
     pub replication: std::collections::HashMap<String, String>,
+    pub replication_v2: std::collections::HashMap<String, String>,
 }
 
 #[derive(Debug)]
@@ -97,78 +100,28 @@ pub struct View {
     pub view_name: String,
 }
 
-#[derive(Debug, Clone)]
-pub enum TlsMode {
-    None,
-    Tls { ca_cert_path: String },
-}
-
-/// Global CQL settings for cqlls
-#[derive(Debug)]
-pub struct CqlSettings {
-    pub url: String,
-    pub pswd: String,
-    pub user: String,
-    pub tls: TlsMode,
-}
-
-impl CqlSettings {
-    pub fn new() -> Self {
-        Self {
-            url: String::from("127.0.0.1:9042"),
-            pswd: String::from("cassandra"),
-            user: String::from("cassandra"),
-            tls: TlsMode::None,
-        }
-    }
-
-    pub fn new_docker() -> Self {
-        Self {
-            url: String::from("172.17.0.2:9042"),
-            pswd: String::from("cassandra"),
-            user: String::from("cassandra"),
-            tls: TlsMode::None,
-        }
-    }
-
-    pub fn from_env(url: &str, pswd: &str, user: &str) -> Self {
-        Self {
-            url: String::from(url),
-            pswd: String::from(pswd),
-            user: String::from(user),
-            tls: TlsMode::None,
-        }
-    }
-
-    pub fn with_tls(mut self, ca_cert_path: impl Into<String>) -> Self {
-        self.tls = TlsMode::Tls {
-            ca_cert_path: ca_cert_path.into(),
-        };
-        self
-    }
-}
-
-/// Builds client session
-/// Builds client session
-async fn build_session(config: &CqlSettings) -> Result<Session, Box<dyn std::error::Error>> {
+async fn build_session(config: &CqllsConfig) -> Result<Session, Box<dyn std::error::Error>> {
     let mut builder = SessionBuilder::new()
-        .known_node(&config.url)
         .user(&config.user, &config.pswd)
         .connection_timeout(Duration::from_secs(3));
 
+    for node in &config.known_nodes {
+        builder = builder.known_node(node.as_str());
+    }
+
     match &config.tls {
-        TlsMode::None => {
+        config::TlsMode::None => {
             info!("Connecting without TLS");
         }
-        TlsMode::Tls { ca_cert_path } => {
-            if ca_cert_path.is_empty() {
+        config::TlsMode::Tls => {
+            if config.ca_cert.is_empty() {
                 return Err("TLS enabled but ca_cert_path is empty".into());
             }
 
-            info!("Connecting with TLS, cert path: {}", ca_cert_path);
+            info!("Connecting with TLS, cert path: {}", config.ca_cert);
 
-            let rustls_ca = CertificateDer::from_pem_file(ca_cert_path)
-                .map_err(|e| format!("Failed to load CA cert '{}': {}", ca_cert_path, e))?;
+            let rustls_ca = CertificateDer::from_pem_file(&config.ca_cert)
+                .map_err(|e| format!("Failed to load CA cert '{}': {}", config.ca_cert, e))?;
 
             let mut root_store = RootCertStore::empty();
             root_store.add(rustls_ca)?;
@@ -179,12 +132,14 @@ async fn build_session(config: &CqlSettings) -> Result<Session, Box<dyn std::err
 
             builder = builder.tls_context(Some(Arc::new(tls_config)));
         }
+
+        config::TlsMode::MTls => {}
     }
 
     Ok(builder.build().await?)
 }
 pub async fn query_keyspaces(
-    config: &CqlSettings,
+    config: &CqllsConfig,
 ) -> Result<Vec<KeySpace>, Box<dyn std::error::Error>> {
     info!("Start transaction");
     let session = build_session(config).await?;
@@ -210,7 +165,7 @@ pub async fn query_keyspaces(
 }
 
 pub async fn query_g_fields(
-    config: &CqlSettings,
+    config: &CqllsConfig,
 ) -> Result<Vec<Column>, Box<dyn std::error::Error>> {
     let session = build_session(config).await?;
     let mut items = Vec::<Column>::new();
@@ -242,13 +197,13 @@ pub async fn query_g_fields(
     Ok(items)
 }
 
-pub async fn check_connection(config: &CqlSettings) -> Result<bool, Box<dyn std::error::Error>> {
+pub async fn check_connection(config: &CqllsConfig) -> Result<bool, Box<dyn std::error::Error>> {
     _ = build_session(config).await?;
     Ok(true)
 }
 
 pub async fn query_keyspace_scoped_tables(
-    config: &CqlSettings,
+    config: &CqllsConfig,
     keyspace: &str,
 ) -> Result<Vec<Table>, Box<dyn std::error::Error>> {
     let session = build_session(config).await?;
@@ -271,7 +226,7 @@ pub async fn query_keyspace_scoped_tables(
 }
 
 pub async fn query_g_tables(
-    config: &CqlSettings,
+    config: &CqllsConfig,
 ) -> Result<Vec<Table>, Box<dyn std::error::Error>> {
     let keyspaces = query_keyspaces(&config).await?;
     let mut items = Vec::<Table>::new();
@@ -285,7 +240,7 @@ pub async fn query_g_tables(
 }
 
 pub async fn query_keyspace_scoped_fields(
-    config: &CqlSettings,
+    config: &CqllsConfig,
     keyspace: &str,
 ) -> Result<Vec<Column>, Box<dyn std::error::Error>> {
     let session = build_session(config).await?;
@@ -330,7 +285,7 @@ pub async fn query_keyspace_scoped_fields(
 }
 
 pub async fn query_hard_scoped_fields(
-    config: &CqlSettings,
+    config: &CqllsConfig,
     keyspace_name: &str,
     table_name: &str,
 ) -> Result<Vec<Column>, Box<dyn std::error::Error>> {
@@ -373,7 +328,7 @@ pub async fn query_hard_scoped_fields(
     state_type
 */
 pub async fn query_aggregates(
-    config: &CqlSettings,
+    config: &CqllsConfig,
 ) -> Result<Vec<Aggregate>, Box<dyn std::error::Error>> {
     let session = build_session(config).await?;
     let query = format!("SELECT keyspace_name, aggregate_name FROM system_schema.aggregates;");
@@ -409,7 +364,7 @@ pub async fn query_aggregates(
     return_type
 */
 pub async fn query_functions(
-    config: &CqlSettings,
+    config: &CqllsConfig,
 ) -> Result<Vec<Function>, Box<dyn std::error::Error>> {
     let session = build_session(config).await?;
     let query = format!("SELECT keyspace_name, function_name FROM system_schema.functions;");
@@ -441,7 +396,7 @@ pub async fn query_functions(
     kind |
     options
 */
-pub async fn query_indexes(config: &CqlSettings) -> Result<Vec<Index>, Box<dyn std::error::Error>> {
+pub async fn query_indexes(config: &CqllsConfig) -> Result<Vec<Index>, Box<dyn std::error::Error>> {
     let session = build_session(config).await?;
     let query = format!("SELECT keyspace_name, index_name FROM system_schema.indexes;");
 
@@ -471,7 +426,7 @@ pub async fn query_indexes(config: &CqlSettings) -> Result<Vec<Index>, Box<dyn s
     field_names |
     field_type
 */
-pub async fn query_types(config: &CqlSettings) -> Result<Vec<Type>, Box<dyn std::error::Error>> {
+pub async fn query_types(config: &CqllsConfig) -> Result<Vec<Type>, Box<dyn std::error::Error>> {
     let session = build_session(config).await?;
     let query = format!("SELECT keyspace_name, type_name FROM system_schema.types;");
 
@@ -517,7 +472,7 @@ pub async fn query_types(config: &CqlSettings) -> Result<Vec<Type>, Box<dyn std:
     speculative_retry |
     where_clause
 */
-pub async fn query_views(config: &CqlSettings) -> Result<Vec<View>, Box<dyn std::error::Error>> {
+pub async fn query_views(config: &CqllsConfig) -> Result<Vec<View>, Box<dyn std::error::Error>> {
     let session = build_session(config).await?;
 
     let query = format!("SELECT keyspace_name, view_name FROM system_schema.views;");
