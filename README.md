@@ -193,8 +193,8 @@ Enable/Disable logging.
 
 Log file can be found at:
 
-- MacOS: `~/Library/Application\ Support/cqlls`
-- Linux: `~/.local/share/cqlls`
+- MacOS: `~/Library/Application\ Support/cqlls/cqlls.log`
+- Linux: `~/.local/share/cqlls/cqlls.log`
 
 -------
 
