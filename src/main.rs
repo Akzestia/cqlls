@@ -1,22 +1,18 @@
 /*
     MIT License
-
     Copyright (c) 2026 アクゼスティア
 */
-
-use cqlls::cqlsh::{CqlSettings, TlsMode};
-use cqlls::lsp::{Backend, FormattingSettings};
-use cqlls::setup::setup_logger;
+use cqlls::config::*;
+use cqlls::logger::setup_logger;
+use cqlls::lsp::Backend;
 use cqlls::version;
-use log::info;
+use log::{error, info};
 use std::collections::HashMap;
-use std::fs::exists;
 use std::panic;
 use tokio::io::{stdin, stdout};
 use tokio::sync::RwLock;
 use tower_lsp::{LspService, Server};
 
-/// Docs https://github.com/Akzestia/cqlls
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
@@ -26,102 +22,48 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
 
-    // Logging Ssettings
-    let enable_logging = std::env::var("CQL_LS_ENABLE_LOGGING").unwrap_or_else(|_| {
-        info!("Logging mode wasn't provided. Setting Logging mode to default(false)");
-        "false".to_string()
-    });
+    #[cfg(debug_assertions)]
+    if args.len() == 3 && (args[1] == "--debug" || args[1] == "-d") {
+        use cqlls::test_base::debug_format;
+        println!("{}", version::version());
+        debug_format(&args[2]).await;
+        return Ok(());
+    }
 
-    if enable_logging == "true" {
+    let config = match std::fs::read_to_string(".cqlls") {
+        Ok(contents) => match parse_config(&contents) {
+            Ok(cfg) => {
+                info!("Config: {:?}", cfg);
+                cfg
+            }
+            Err(_) => {
+                error!("Failed to parse .cqlls, using defaults");
+                CqllsConfig::default()
+            }
+        },
+        Err(_) => {
+            info!("No .cqlls config file found, using defaults");
+            CqllsConfig::default()
+        }
+    };
+
+    if config.logging {
         println!("Setting up logger");
         setup_logger().unwrap_or_else(|e| println!("{e}"));
-
-        // Creates panic.log inside toor dir if server panics
         panic::set_hook(Box::new(|info| {
             let msg = format!("{info}\n");
             let _ = std::fs::write("panic.log", msg);
         }));
     }
 
-    // DB connection settings
-    let url = std::env::var("CQL_LS_DB_URL").unwrap_or_else(|_| {
-        info!("Db url wasn't provided. Setting url to default(127.0.0.1)");
-        "127.0.0.1".to_string()
-    });
-
-    let pswd = std::env::var("CQL_LS_DB_PASSWD").unwrap_or_else(|_| {
-        info!("Db pswd wasn't provided.\nSetting pswd to default(cassandra)");
-        "cassandra".to_string()
-    });
-
-    let user = std::env::var("CQL_LS_DB_USER").unwrap_or_else(|_| {
-        info!("Db user wasn't provided.\nSetting user to default(cassandra)");
-        "cassandra".to_string()
-    });
-
-    // TLS settings
-    let ca_cert_file = std::env::var("CQL_LS_TLS_CA_CERT_FILE").unwrap_or_else(|_| {
-        info!("Cert file wasn't provided, TLS && mTLS are disabled");
-        "".to_string()
-    });
-
-    let mut tls_mode = std::env::var("CQL_LS_TLS_MODE").unwrap_or_else(|_| {
-        info!("TLS mode wasn't set\nSetting default TLS mode to none");
-        "none".to_string()
-    });
-
-    // Set tls mode to none if cert wasn't provided
-    if !exists(&ca_cert_file).is_ok() {
-        tls_mode = "none".to_string();
-    }
-
-    // Formatting settings
-    let type_alignment_offset = std::env::var("CQL_LS_TYPE_ALIGNMENT_OFFSET").unwrap_or_else(|_| {
-       info!("Type alignment offset wasn't provided.\n Setting type alignment offset to default 7");
-       "7".to_string()
-    });
-
-    let diagnostics = std::env::var("CQL_LS_DIAGNOSTICS").unwrap_or_else(|_| {
-        info!("Diagnostics env var wasn't set.\nDisabling diagnostics");
-        "false".to_string()
-    });
-
-    let tls = match tls_mode.as_str() {
-        "tls" => TlsMode::Tls {
-            ca_cert_path: ca_cert_file,
-        },
-        _ => TlsMode::None,
-    };
-
-    let diagnostics_enabled = match diagnostics.as_str() {
-        "true" => true,
-        "false" => false,
-        _ => false,
-    };
-
-    let formatting_settings = FormattingSettings::from_env(&type_alignment_offset);
-    let settings = match tls {
-        TlsMode::Tls { ca_cert_path } => {
-            let settings = CqlSettings::from_env(&url, &pswd, &user).with_tls(ca_cert_path);
-            settings
-        }
-        TlsMode::None => {
-            let settings = CqlSettings::from_env(&url, &pswd, &user);
-            settings
-        }
-    };
-
     let stdin = stdin();
     let stdout = stdout();
+
     let (service, socket) = LspService::new(|client| Backend {
         client,
         documents: RwLock::new(HashMap::new()),
         current_document: RwLock::new(None),
-        config: settings,
-        formatting_config: formatting_settings,
-        indent: "    ".to_string(),
-        max_line_length: 20,
-        diagnostics: diagnostics_enabled,
+        config,
     });
 
     Server::new(stdin, stdout, socket).serve(service).await;
