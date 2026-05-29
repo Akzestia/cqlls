@@ -18,3 +18,6 @@ TODO.md
 
 # Single file --debug artifacts
 cqlls/**
+
+# cqlls config file
+.cqlls
