@@ -1127,7 +1127,7 @@ impl Backend {
         info!("Working Vec Size: {}", working_vec.len());
         info!("Original lines: {}", lines.len());
 
-        return working_vec.join("\n");
+        working_vec.join("\n")
     }
 
     pub async fn format_file(&self, lines: &Vec<&str>, document_url: &Url) -> Vec<TextEdit> {
