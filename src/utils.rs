@@ -62,7 +62,7 @@ impl Backend {
             }
         }
 
-        return is_type;
+        is_type
     }
 
     pub fn line_contains_cql_kw(&self, line: &str) -> bool {
@@ -79,7 +79,7 @@ impl Backend {
     }
 
     pub fn is_line_inside_selectors(&self, line: &str, index: usize, lines: &Vec<String>) -> bool {
-        if self.line_contains_cql_kw(line) || line.contains(";") || line.len() == 0 {
+        if self.line_contains_cql_kw(line) || line.contains(";") || line.is_empty() {
             return false;
         }
 
