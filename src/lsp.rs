@@ -5,6 +5,7 @@
 */
 
 use crate::config::CqllsConfig;
+use log::info;
 use std::collections::HashMap;
 use tokio::sync::RwLock;
 use tower_lsp::lsp_types::*;
@@ -264,6 +265,18 @@ impl LanguageServer for Backend {
             return self.handle_drop_view_completions().await;
         }
 
+        if ssh_fields {
+            return self.handle_fields_completion(line, &position).await;
+        }
+
+        if ssh_from {
+            return self.handle_from_completion();
+        }
+
+        if ssh_table_completions {
+            return self.handle_table_completion(&position).await;
+        }
+
         if ssh_types {
             return self.handle_types_completion();
         }
@@ -272,20 +285,8 @@ impl LanguageServer for Backend {
             return self.handle_type_modifiers_completion(line);
         }
 
-        if ssh_from {
-            return self.handle_from_completion();
-        }
-
         if ssh_if_not_exists {
             return self.handle_if_not_exists();
-        }
-
-        if ssh_fields {
-            return self.handle_fields_completion(line, &position).await;
-        }
-
-        if ssh_table_completions {
-            return self.handle_table_completion(&position).await;
         }
 
         if ssh_graph_types {
