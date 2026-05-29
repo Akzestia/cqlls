@@ -62,3 +62,9 @@ scylla-setup:
 cql name:
     touch ./tests/cql/provided/{{name}}.txt
     touch ./tests/cql/expected/{{name}}.cql
+
+fmt file="":
+    cargo run -- --debug fmt {{file}}
+
+cmt file="" line="0" char="0":
+    cargo run -- --debug cmt {{file}} {{line}} {{char}}
