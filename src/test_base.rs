@@ -1,14 +1,72 @@
 use crate::config::*;
-use crate::lsp::Document;
-use dirs::data_dir;
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use tokio::sync::RwLock;
+use tower_lsp::lsp_types::*;
 
 use crate::lsp::Backend;
 use tower_lsp::LspService;
 use url::Url;
+
+pub async fn debug_completion(debug_target: &str, line: u32, character: u32) {
+    let pt = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join(debug_target)
+        .canonicalize()
+        .expect("Debug target not found!");
+
+    let config = match std::fs::read_to_string(".cqlls") {
+        Ok(contents) => parse_config(&contents).unwrap_or_default(),
+        _ => Default::default(),
+    };
+
+    let (service, _) = LspService::new(|client| Backend {
+        client,
+        documents: RwLock::new(HashMap::new()),
+        current_document: RwLock::new(None),
+        config,
+    });
+
+    let test_url = Url::from_file_path(&pt).unwrap();
+    let text_test = fs::read_to_string(test_url.to_file_path().unwrap()).unwrap();
+    let backend = service.inner();
+
+    {
+        let mut docs = backend.documents.write().await;
+        docs.insert(test_url.clone(), text_test.clone());
+    }
+
+    let params = CompletionParams {
+        text_document_position: tower_lsp::lsp_types::TextDocumentPositionParams {
+            text_document: tower_lsp::lsp_types::TextDocumentIdentifier {
+                uri: test_url.clone(),
+            },
+            position: tower_lsp::lsp_types::Position { line, character },
+        },
+        work_done_progress_params: Default::default(),
+        partial_result_params: Default::default(),
+        context: None,
+    };
+
+    let result = backend.completion(params).await;
+
+    match result {
+        Ok(Some(CompletionResponse::Array(items))) => {
+            println!("Completions ({} items):", items.len());
+            for item in items {
+                println!("  - {}", item.label);
+            }
+        }
+        Ok(Some(CompletionResponse::List(list))) => {
+            println!("Completions ({} items):", list.items.len());
+            for item in list.items {
+                println!("  - {}", item.label);
+            }
+        }
+        Ok(None) => println!("No completions returned"),
+        Err(e) => println!("Error: {:?}", e),
+    }
+}
 
 pub async fn debug_format(debug_target: &str) {
     let pt = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -21,7 +79,7 @@ pub async fn debug_format(debug_target: &str) {
         _ => Default::default(),
     };
 
-    let (service, socket) = LspService::new(|client| Backend {
+    let (service, _) = LspService::new(|client| Backend {
         client,
         documents: RwLock::new(HashMap::new()),
         current_document: RwLock::new(None),
@@ -80,7 +138,7 @@ pub async fn run_format(cql_test: &Url, cql_expected: &Url) -> bool {
         _ => Default::default(),
     };
 
-    let (service, socket) = LspService::new(|client| Backend {
+    let (service, _) = LspService::new(|client| Backend {
         client,
         documents: RwLock::new(HashMap::new()),
         current_document: RwLock::new(None),
