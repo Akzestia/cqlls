@@ -12,13 +12,7 @@ use crate::lsp::Backend;
 
 impl Backend {
     pub async fn compute_diagnostics(&self, text: &str) -> Vec<Diagnostic> {
-        if !self
-            .config
-            .features
-            .get("diagnostics")
-            .copied()
-            .unwrap_or(false)
-        {
+        if !self.config.has_feature("diagnostics") {
             return vec![];
         }
 
