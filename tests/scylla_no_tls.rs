@@ -9,9 +9,7 @@ use cqlls::cqlsh::{check_connection, query_keyspaces};
 
 #[tokio::test]
 async fn test_connection_no_tls() {
-    let mut config = CqllsConfig::default();
-
-    config.known_nodes.push("127.0.0.1".to_string());
+    let config = CqllsConfig::with_knodes(vec!["127.0.0.1:9042".to_string()]);
 
     let result = check_connection(&config).await;
 
@@ -20,9 +18,7 @@ async fn test_connection_no_tls() {
 
 #[tokio::test]
 async fn test_query_keyspaces_no_tls() {
-    let mut config = CqllsConfig::default();
-
-    config.known_nodes.push("127.0.0.1".to_string());
+    let config = CqllsConfig::with_knodes(vec!["127.0.0.1:9042".to_string()]);
 
     let result = check_connection(&config).await;
 
