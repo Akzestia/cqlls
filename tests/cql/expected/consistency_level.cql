@@ -1,0 +1,40 @@
+CONSISTENCY QUORUM;
+
+CONSISTENCY LEVEL ONE;
+
+INSERT INTO table (
+    key,
+    value
+)
+VALUES (
+    1,
+    'test'
+) USING CONSISTENCY QUORUM;
+
+UPDATE table
+SET value = 'new'
+WHERE key = 1
+USING CONSISTENCY LOCAL_ONE;
+
+DELETE FROM table
+WHERE key = 1
+USING CONSISTENCY TWO;
+
+SELECT * FROM table
+WHERE key = 1
+USING CONSISTENCY LOCAL_QUORUM;
+
+BEGIN BATCH
+
+INSERT INTO table (
+    key,
+    value
+)
+VALUES (
+    1,
+    'a'
+);
+
+UPDATE table        SET value = 'b' WHERE key = 2;
+
+APPLY BATCH USING CONSISTENCY EACH_QUORUM;

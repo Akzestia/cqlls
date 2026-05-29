@@ -1,0 +1,20 @@
+create table if not exists users (
+    id                  uuid,
+    display_name        text,
+
+    primary key((id)) -- (())
+);
+
+CREATE TABLE IF NOT EXISTS UsersByID (
+    id               UUID,
+    user_name        TEXT,
+
+    PRIMARY KEY ((id), user_name) -- ((), )
+);
+
+create table if not exists users (
+    id                  uuid,
+    display_name        text,
+
+    primary key(id, (user_name)) -- (, ())
+);

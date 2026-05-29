@@ -1,0 +1,7 @@
+LIST ALL PERMISSIONS OF role1;
+
+LIST ALL PERMISSIONS;
+
+LIST ALL PERMISSIONS OF sam;
+
+LIST ALL PERMISSIONS ON cycling.cyclist_name OF team_manager;

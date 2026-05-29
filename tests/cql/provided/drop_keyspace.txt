@@ -1,0 +1,3 @@
+DROP KEYSPACE cycling;
+
+DROP KEYSPACE IF EXISTS cycling;

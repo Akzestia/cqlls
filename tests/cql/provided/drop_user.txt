@@ -1,0 +1,3 @@
+DROP USER IF EXISTS boone;
+
+DROP USER montana;
