@@ -23,10 +23,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     #[cfg(debug_assertions)]
-    if args.len() == 3 && (args[1] == "--debug" || args[1] == "-d") {
-        use cqlls::test_base::debug_format;
-        println!("{}", version::version());
-        debug_format(&args[2]).await;
+    if args.len() >= 3 && (args[1] == "--debug" || args[1] == "-d") {
+        use cqlls::test_base::{debug_completion, debug_format};
+        match args[2].as_ref() {
+            "fmt" => {
+                debug_format(&args[3]).await;
+            }
+            "cmt" => {
+                let line: u32 = args[4].parse().expect("line must be a number");
+                let character: u32 = args[5].parse().expect("character must be a number");
+                debug_completion(&args[3], line, character).await;
+            }
+            _ => {}
+        }
         return Ok(());
     }
 
