@@ -1,8 +1,8 @@
 # cqlls
 
 [![Crates.io](https://img.shields.io/crates/v/cqlls.svg)](https://crates.io/crates/cqlls)</br>
-  
-The Best Open Source **language server** for CQL (Cassandra Query Language) ^_^
+
+The Best Open Source **language server** for CQL (Cassandra Query Language) ^\_^
 
 ### List of IDE Integrations via plugins | extensions
 
@@ -24,9 +24,10 @@ export PATH="$HOME/.cargo/bin:$PATH"
 ```
 
 Env variables used by the language server
+
 ```sh
 # Db related
-export CQL_LS_DB_URL="172.17.0.2"
+export CQL_LS_DB_URL="172.17.0.2:9042"
 export CQL_LS_DB_PASSWD="cassandra"
 export CQL_LS_DB_USER="cassandra"
 export CQL_LS_TLS_MODE="none|tls"
@@ -44,7 +45,7 @@ export CQL_LS_DIAGNOSTICS="false"
 
 > [!TIP]
 > Diagnostics are currently available as an experimental feature, </br>
-> and aren't stable yet ^_^
+> and aren't stable yet ^\_^
 
 ### License
 
