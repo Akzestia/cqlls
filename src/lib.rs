@@ -2,6 +2,7 @@
     Copyright (c) 2026 アクゼスティア. All Rights Reserved.
 */
 
+pub mod cmd;
 pub mod completions;
 pub mod config;
 pub mod consts;
