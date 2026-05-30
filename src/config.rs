@@ -2,6 +2,9 @@
     Copyright (c) 2026 アクゼスティア. All Rights Reserved.
 */
 
+use std::io::Write;
+use std::path::PathBuf;
+
 #[derive(Debug)]
 pub enum TlsMode {
     None,
@@ -68,6 +71,56 @@ impl CqllsConfig {
 
     pub fn has_feature(&self, feature: &str) -> bool {
         self.features.iter().any(|f| f == feature)
+    }
+
+    pub fn try_from_config_file() -> CqllsConfig {
+        std::fs::read_to_string(".cqlls")
+            .ok()
+            .and_then(|contents| parse_config(&contents).ok())
+            .unwrap_or_default()
+    }
+
+    pub fn write_default_config_file() -> Result<(), Box<dyn std::error::Error>> {
+        let current_dir = std::env::current_dir()?;
+        let config_path: PathBuf = current_dir.join(".cqlls");
+
+        let mut file = std::fs::File::create(config_path)?;
+
+        writeln!(file, "db {{")?;
+        writeln!(file, "    type: \"scylla\"")?;
+        writeln!(file, "    preferred_dc: \"\"")?;
+        writeln!(file)?;
+        writeln!(file, "    tls: \"none\"")?;
+        writeln!(file, "    ca_cert: \"\"")?;
+        writeln!(file)?;
+        writeln!(file, "    user: \"cassandra\"")?;
+        writeln!(file, "    pswd: \"cassandra\"")?;
+        writeln!(file)?;
+        writeln!(file, "    known_nodes {{")?;
+        writeln!(file, "      \"127.0.0.1:9042\"")?;
+        writeln!(file, "    }}")?;
+        writeln!(file, "}}")?;
+        writeln!(file)?;
+
+        writeln!(file, "fmt {{")?;
+        writeln!(file, "    type_padding: 8")?;
+        writeln!(file, "    indent: 4")?;
+        writeln!(file, "}}")?;
+        writeln!(file)?;
+
+        writeln!(file, "features {{")?;
+        writeln!(file, "    context_aware_completions: true")?;
+        writeln!(file, "    diagnostics: false")?;
+        writeln!(file, "}}")?;
+        writeln!(file)?;
+
+        writeln!(file, "debug {{")?;
+        writeln!(file, "    logging: false")?;
+        writeln!(file, "}}")?;
+        writeln!(file)?;
+
+        file.flush()?;
+        Ok(())
     }
 }
 
