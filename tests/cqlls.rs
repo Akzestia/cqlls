@@ -1,3 +1,7 @@
+/*
+    Copyright (c) 2026 アクゼスティア. All Rights Reserved.
+*/
+
 use cqlls::config::*;
 use cqlls::test_base::{get_pt_pe, run_format};
 
