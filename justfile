@@ -7,6 +7,12 @@ default: cargo::build
 
 build: cargo::build 
 
+release: cargo::release
+
+build-stable: cargo::build-stable
+
+release: cargo::release-stable
+
 clean: cargo::clean
 
 run: cargo::run
