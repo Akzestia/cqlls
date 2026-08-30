@@ -1,7 +1,7 @@
 set dotenv-load
 
-mod cargo 'jmods/cargo.just'
-mod debug 'jmods/dbg.just'
+mod cargo 'jm/cargo.just'
+mod debug 'jm/dbg.just'
 
 default: cargo::build
 
@@ -11,7 +11,7 @@ release: cargo::release
 
 build-stable: cargo::build-stable
 
-release: cargo::release-stable
+release-stable: cargo::release-stable
 
 clean: cargo::clean
 
