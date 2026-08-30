@@ -2,7 +2,7 @@
 
 ### General Rules
 
-- Use of Integrated AI tools is strictly prohibited(Claude Code, Cursor etc.)!
+- Fck AI Slop だよ xD
 > [!NOTE]
 > I don't wanna waste my time cleaning up your AI slop from the codebase :D
 
