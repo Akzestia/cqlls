@@ -6,7 +6,8 @@
 
 The Best Open Source **language server** for CQL (Cassandra Query Language) ^_^ 
 
-  <img width="354" height="373.5" alt="image" src="https://media.tenor.com/YOphBzO0MfoAAAAi/japanese-animation.gif" />
+<img width="auto" height="741" alt="image" src="https://github.com/user-attachments/assets/f2af8e2a-7aa6-4fd5-a11b-92f3d079eef5" />
+
 </div>
 
 ------------
