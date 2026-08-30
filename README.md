@@ -12,9 +12,9 @@ The Best Open Source **language server** for CQL (Cassandra Query Language) ^_^
 
 ------------
 
-### IDE Integrations
+### Using w/ Nvim
 
-- [Nvim](https://github.com/Akzestia/nvim-cql-v2)
+- [cqlls in Nvim 101](https://github.com/Akzestia/nvim-cql-v2)
 
 ### Installation
 
