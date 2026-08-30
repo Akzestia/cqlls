@@ -144,7 +144,13 @@ pub async fn query_keyspaces(
     }
     info!("Start transaction");
     let session = build_session(config).await?;
-    let select_statement: Statement = Statement::new("SELECT * FROM system_schema.keyspaces;");
+
+    // Shit stopped working for some reason xD
+    let select_statement: Statement = Statement::new(
+        "SELECT keyspace_name, durable_writes, replication, replication_v2 \
+     FROM system_schema.keyspaces;",
+    );
+
     let statement: PreparedStatement = session.prepare(select_statement).await?;
 
     let mut rows_stream = session
