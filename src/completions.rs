@@ -598,7 +598,7 @@ impl Backend {
 
             while index_up > 0 && index_up < splitx.len() {
                 if (!splitx[index_up].contains("(")
-                    && KEYWORDS_STRINGS_LWC.contains(&splitx[index_up].to_string()))
+                    && KEYWORDS_STRINGS_LWC.contains(&splitx[index_up]))
                     || splitx[index_up].contains(";")
                 {
                     break;
@@ -1653,17 +1653,15 @@ impl Backend {
 
         match split.len() {
             0 => false,
-            2 => prefix.ends_with(' ') && CQL_TYPES_LWC.contains(&split[1].to_string()),
+            2 => prefix.ends_with(' ') && CQL_TYPES_LWC.contains(&split[1]),
             3 => {
-                (!prefix.ends_with(' ') && CQL_TYPES_LWC.contains(&split[1].to_string()))
+                (!prefix.ends_with(' ') && CQL_TYPES_LWC.contains(&split[1]))
                     || (prefix.ends_with(' ')
-                        && CQL_TYPES_LWC.contains(&split[1].to_string())
+                        && CQL_TYPES_LWC.contains(&split[1])
                         && split[2] == "primary")
             }
             4 => {
-                !prefix.ends_with(' ')
-                    && CQL_TYPES_LWC.contains(&split[1].to_string())
-                    && split[2] == "primary"
+                !prefix.ends_with(' ') && CQL_TYPES_LWC.contains(&split[1]) && split[2] == "primary"
             }
             _ => false,
         }
@@ -1857,7 +1855,7 @@ impl Backend {
         false
     }
 
-    pub fn should_edit_select_statement(&self, line: &str, lines: &Vec<String>) -> bool {
+    pub fn should_edit_select_statement(&self, _line: &str, _lines: &Vec<String>) -> bool {
         false
     }
 
