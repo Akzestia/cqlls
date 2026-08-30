@@ -9,3 +9,7 @@ const VERSION_PATCH: u8 = 0;
 pub fn version() -> String {
     format!("cqlls v{VERSION_MAJOR}.{VERSION_MINOR}.{VERSION_PATCH}")
 }
+
+pub fn version_short() -> String {
+    format!("{VERSION_MAJOR}.{VERSION_MINOR}.{VERSION_PATCH}")
+}
