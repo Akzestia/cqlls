@@ -15,7 +15,7 @@ release-stable: cargo::release-stable
 
 clean: cargo::clean
 
-run: cargo::run
+run *args: (cargo::run args)
     
 test: cargo::test
 
