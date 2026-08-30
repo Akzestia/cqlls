@@ -404,8 +404,7 @@ impl Backend {
 
             let mut found_type = None;
             for word in line.split_whitespace() {
-                if (CQL_TYPES_LWC
-                    .contains(&word.to_lowercase().replace(",", "").trim().to_string())
+                if (CQL_TYPES_LWC.contains(&word.to_lowercase().replace(",", "").trim())
                     || word.starts_with("set")
                     || word.starts_with("map")
                     || word.starts_with("list")
@@ -812,7 +811,7 @@ impl Backend {
                 let lw = lines[index + 1].to_lowercase();
                 let split: Vec<&str> = lw.split(' ').collect();
                 if lines[index + 1].to_lowercase().len() == 0
-                    || CQL_KEYWORDS_LWC.contains(&split[0].to_string())
+                    || CQL_KEYWORDS_LWC.contains(&split[0])
                 {
                     lines[index].push(';');
                 }
@@ -1061,7 +1060,7 @@ impl Backend {
                 for w in split {
                     let wlw = w.to_lowercase();
                     info!("\n\nWLw: {}\n\n", wlw);
-                    if CQL_TYPES_LWC.contains(&wlw.replace(",", "").trim().to_string())
+                    if CQL_TYPES_LWC.contains(&wlw.replace(",", "").trim())
                         || wlw.starts_with("set")
                         || wlw.starts_with("map")
                         || wlw.starts_with("list")

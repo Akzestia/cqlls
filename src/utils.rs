@@ -47,7 +47,7 @@ impl Backend {
 
         for w in split {
             let wlw = w.to_lowercase();
-            if CQL_TYPES_LWC.contains(&wlw.replace(",", "").trim().to_string())
+            if CQL_TYPES_LWC.contains(&wlw.replace(",", "").trim())
                 || wlw.starts_with("set")
                 || wlw.starts_with("map")
                 || wlw.starts_with("list")
@@ -68,7 +68,7 @@ impl Backend {
         let split: Vec<&str> = lw.split(' ').collect();
 
         for kw in split {
-            if CQL_KEYWORDS_LWC.contains(&kw.to_string()) {
+            if CQL_KEYWORDS_LWC.contains(&kw) {
                 return false;
             }
         }
