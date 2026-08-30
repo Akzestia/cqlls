@@ -17,8 +17,8 @@ release-stable:
 clean:
     cargo +nightly clean
 
-run:
-    cargo +nightly run
+run *args:
+    cargo +nightly run {{args}}
 
 test:
     cargo +nightly test
