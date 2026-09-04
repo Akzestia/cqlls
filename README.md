@@ -28,6 +28,18 @@ Via mason.nvim
 MasonInstall cqlls
 ```
 
+nvim-lspconfig
+
+```lua
+cqlls = {
+	-- cmd = { "cqlls" },
+	cmd = { vim.fn.expand("~/.cargo/bin/cqlls") }, -- If u used cargo install
+	filetypes = { "cql", "cqlang" },
+	root_markers = { ".git" },
+    settings = {},
+},
+```
+
 ### Config
 
 To configure cqlls you can add `.cqlls` file in the project root
