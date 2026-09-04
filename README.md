@@ -15,6 +15,7 @@ The Best Open Source **language server** for CQL (Cassandra Query Language) ^_^
 ### Using w/ Nvim
 
 - [cqlls in Nvim 101](https://github.com/Akzestia/nvim-cql-v2)
+- [nvim-treesitter fork w/ cql support](https://github.com/Akzestia/nvim-treesitter)
 
 ### Installation
 
