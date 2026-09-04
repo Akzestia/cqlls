@@ -18,8 +18,14 @@ The Best Open Source **language server** for CQL (Cassandra Query Language) ^_^
 
 ### Installation
 
+From [crates.io](https://crates.io/crates/cqlls)
 ```sh
 cargo install cqlls
+```
+
+Via mason.nvim
+```sh
+MasonInstall cqlls
 ```
 
 ### Config
