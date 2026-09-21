@@ -1,23 +1,25 @@
 set dotenv-load
 
-mod cargo 'jm/cargo.just'
+mod bazel 'jm/bazel.just'
 mod debug 'jm/dbg.just'
 
-default: cargo::build
+default: bazel::build
 
-build: cargo::build 
+build: bazel::build 
 
-release: cargo::release
+release: bazel::release
 
-build-stable: cargo::build-stable
+build-stable: bazel::build-stable
 
-release-stable: cargo::release-stable
+release-stable: bazel::release-stable
 
-clean: cargo::clean
+clean: bazel::clean
 
-run *args: (cargo::run args)
+run *args: (bazel::run args)
     
-test: cargo::test
+test: bazel::test
+
+test-scylla: bazel::test-scylla
 
 fmt file="": (debug::fmt file)
 
