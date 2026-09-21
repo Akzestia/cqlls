@@ -5,7 +5,7 @@ mod debug 'jm/dbg.just'
 
 default: bazel::build
 
-build: bazel::build 
+build: bazel::build
 
 release: bazel::release
 
@@ -13,10 +13,14 @@ build-stable: bazel::build-stable
 
 release-stable: bazel::release-stable
 
+install: bazel::install
+
+install-stable: bazel::install-stable
+
 clean: bazel::clean
 
 run *args: (bazel::run args)
-    
+
 test: bazel::test
 
 test-scylla: bazel::test-scylla
