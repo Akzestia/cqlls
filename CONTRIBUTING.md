@@ -9,6 +9,7 @@
 ### Prerequisites
 
 - Rust
+- Bazel
 - An instance of the CQL database
 
 ### Making Contributions to the project
