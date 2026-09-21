@@ -13,13 +13,23 @@ use crate::lsp::Backend;
 use tower_lsp::LspService;
 use url::Url;
 
+fn project_root() -> PathBuf {
+    if let Some(dir) = std::env::var_os("BUILD_WORKSPACE_DIRECTORY") {
+        return PathBuf::from(dir);
+    }
+    if std::env::var_os("TEST_SRCDIR").is_some() {
+        return std::env::current_dir().expect("cwd");
+    }
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+}
+
 pub async fn debug_completion(debug_target: &str, line: u32, character: u32) {
-    let pt = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+    let pt = project_root()
         .join(debug_target)
         .canonicalize()
         .expect("Debug target not found!");
 
-    let config = match std::fs::read_to_string(".cqlls") {
+    let config = match std::fs::read_to_string(project_root().join(".cqlls")) {
         Ok(contents) => parse_config(&contents).unwrap_or_default(),
         _ => Default::default(),
     };
@@ -73,12 +83,12 @@ pub async fn debug_completion(debug_target: &str, line: u32, character: u32) {
 }
 
 pub async fn debug_format(debug_target: &str) {
-    let pt = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+    let pt = project_root()
         .join(debug_target)
         .canonicalize()
         .expect("Debug target not found!");
 
-    let config = match std::fs::read_to_string(".cqlls") {
+    let config = match std::fs::read_to_string(project_root().join(".cqlls")) {
         Ok(contents) => parse_config(&contents).unwrap_or_default(),
         _ => Default::default(),
     };
@@ -100,7 +110,7 @@ pub async fn debug_format(debug_target: &str) {
         docs.insert(test_url.clone(), text_test.clone());
     }
 
-    let mut log_path = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+    let mut log_path = project_root();
     log_path.push("cqlls");
     std::fs::create_dir_all(&log_path).expect("Failed to create log directory");
     log_path.push("cqlls.log");
@@ -137,7 +147,7 @@ pub async fn debug_format(debug_target: &str) {
 }
 
 pub async fn run_format(cql_test: &Url, cql_expected: &Url) -> bool {
-    let config = match std::fs::read_to_string(".cqlls") {
+    let config = match std::fs::read_to_string(project_root().join(".cqlls")) {
         Ok(contents) => parse_config(&contents).unwrap_or_default(),
         _ => Default::default(),
     };
@@ -172,14 +182,14 @@ pub async fn run_format(cql_test: &Url, cql_expected: &Url) -> bool {
 }
 
 pub fn get_pt_pe(test_name: &str) -> (Url, Url) {
-    let pt = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+    let pt = project_root()
         .join(format!("tests/cql/provided/{}.txt", test_name))
         .canonicalize()
         .expect("dwdw.cql not found — check it exists in project root");
 
     let test_url = Url::from_file_path(&pt).unwrap();
 
-    let pe = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+    let pe = project_root()
         .join(format!("tests/cql/expected/{}.cql", test_name))
         .canonicalize()
         .expect("dwdw.cql not found — check it exists in project root");
