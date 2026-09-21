@@ -1,0 +1,25 @@
+common --enable_platform_specific_config
+common --lockfile_mode=update
+
+build --incompatible_strict_action_env
+build --disk_cache=~/.cache/bazel-disk
+build --reuse_sandbox_directories
+build:linux --sandbox_base=/dev/shm
+
+test --test_output=errors
+
+build:dbg -c dbg
+build:dbg --@rules_rust//rust/settings:extra_rustc_flag=-Cdebuginfo=line-tables-only
+
+build:opt -c opt
+build:opt --@rules_rust//rust/settings:lto=thin
+build:opt --@rules_rust//rust/settings:extra_rustc_flag=-Ccodegen-units=1
+build:opt --@rules_rust//rust/settings:extra_rustc_flag=-Cstrip=symbols
+
+build:nightly --@rules_rust//rust/toolchain/channel=nightly
+build:nightly --@rules_rust//rust/settings:extra_rustc_flag=-Zthreads=10
+
+common:ci --lockfile_mode=error
+build:ci --noshow_progress --color=yes
+
+try-import %workspace%/.bazelrc.user
