@@ -377,6 +377,7 @@ impl Backend {
     pub async fn add_tabs_to_cql_types(&self, lines: &mut Vec<String>, document_url: &Url) {
         let mut index = 0;
         let mut in_function_or_aggregate = false;
+        let mut in_dml_statement = false;
 
         for line in lines.iter_mut() {
             if line.trim().is_empty() {
@@ -394,9 +395,15 @@ impl Backend {
                 in_function_or_aggregate = true;
             }
 
-            if in_function_or_aggregate {
+            let first_word = trimmed_lower.split_whitespace().next().unwrap_or("");
+            if matches!(first_word, "update" | "insert" | "delete" | "select") {
+                in_dml_statement = true;
+            }
+
+            if in_function_or_aggregate || in_dml_statement {
                 if line.contains(";") {
                     in_function_or_aggregate = false;
+                    in_dml_statement = false;
                 }
                 index += 1;
                 continue;
@@ -554,8 +561,7 @@ impl Backend {
             let is_in_create_type = self
                 .is_inside_create_type_no_position(idx, document_url)
                 .await;
-            let is_inside_curly_bracers =
-                self.is_inside_curly_braces_block(idx, document_url).await;
+            let is_inside_curly_bracers = self.is_line_inside_curly_braces(idx, lines);
 
             let banned_starts = [
                 "create table",
@@ -605,6 +611,43 @@ impl Backend {
         for i in indices {
             lines[i].insert_str(0, &" ".repeat(self.config.indent as usize));
         }
+    }
+
+    fn is_line_inside_curly_braces(&self, line_index: usize, lines: &[String]) -> bool {
+        if line_index >= lines.len() {
+            return false;
+        }
+
+        let current = &lines[line_index];
+        if current.contains('{') || current.contains('}') {
+            return false;
+        }
+
+        let mut found_open_brace = false;
+        for line in lines[..line_index].iter().rev() {
+            if line.contains('}') {
+                return false;
+            }
+            if line.contains('{') {
+                found_open_brace = true;
+                break;
+            }
+        }
+
+        if !found_open_brace {
+            return false;
+        }
+
+        for line in lines[line_index + 1..].iter() {
+            if line.contains('}') {
+                return true;
+            }
+            if line.contains('{') {
+                return false;
+            }
+        }
+
+        false
     }
 
     pub fn fix_string_literals(&self, lines: &mut Vec<String>) {
