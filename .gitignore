@@ -21,3 +21,7 @@ cqlls/**
 
 # cqlls config file
 .cqlls
+
+# Bazel
+bazel-*
+.bazelrc.user
