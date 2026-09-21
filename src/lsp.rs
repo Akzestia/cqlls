@@ -171,18 +171,25 @@ impl LanguageServer for Backend {
         &self,
         params: CompletionParams,
     ) -> tower_lsp::jsonrpc::Result<Option<CompletionResponse>> {
+        let start = std::time::Instant::now();
+
         let uri = params.text_document_position.text_document.uri;
         let position = params.text_document_position.position;
-
         let documents = self.documents.read().await;
         let text = match documents.get(&uri) {
             Some(text) => text,
-            None => return Ok(None),
+            None => {
+                info!("Completion computation took {:?}", start.elapsed());
+                return Ok(None);
+            }
         };
 
         let line = match text.lines().nth(position.line as usize) {
             Some(line) => line,
-            None => return Ok(None),
+            None => {
+                info!("Completion computation took {:?}", start.elapsed());
+                return Ok(None);
+            }
         };
 
         let in_string = Self::is_in_string_literal(line, position.character);
@@ -195,17 +202,14 @@ impl LanguageServer for Backend {
         let ssh_if_not_exists = self.should_suggest_if_not_exists(line, &position);
         let ssh_create_keywords = self.should_suggest_create_keywords(line, &position);
         let ssh_alter_keywords = self.should_suggest_alter_keywords(line, &position);
-
         let ssh_drop_keywords = self.should_suggest_drop_keywords(line, &position);
         let ssh_drop_keyspaces = self.should_suggest_drop_keyspaces(line, &position);
         let ssh_drop_tables = self.should_suggest_drop_tables(line, &position);
-
         let ssh_drop_aggregate = self.should_suggest_drop_aggregate(line, &position);
         let ssh_drop_function = self.should_suggest_drop_function(line, &position);
         let ssh_drop_index = self.should_suggest_drop_indexes(line, &position);
         let ssh_drop_type = self.should_suggest_drop_types(line, &position);
         let ssh_drop_view = self.should_suggest_drop_views(line, &position);
-
         let ssh_types = self
             .should_suggest_types_completions(line, &position, &uri)
             .await;
@@ -213,93 +217,60 @@ impl LanguageServer for Backend {
             .should_suggest_type_modifiers(line, &position, &uri)
             .await;
 
-        if ssh_keyspaces {
-            return if in_string {
+        let result = if ssh_keyspaces {
+            if in_string {
                 self.handle_in_string_keyspace_completion(line, &position)
                     .await
             } else {
                 self.handle_out_of_string_keyspace_completion(line, &position)
                     .await
-            };
-        }
-
-        if ssh_create_keywords {
-            return self.handle_create_keywords();
-        }
-
-        if ssh_alter_keywords {
-            return self.handle_alter_keywords();
-        }
-
-        if ssh_drop_keywords {
-            return self.handle_drop_keywords();
-        }
-
-        if ssh_drop_keyspaces {
-            return self.handle_drop_keyspace_completions(line, &position).await;
-        }
-
-        if ssh_drop_tables {
-            return self.handle_table_completion(&position).await;
-        }
-
-        if ssh_drop_aggregate {
-            return self.handle_drop_aggregate_completions().await;
-        }
-
-        if ssh_drop_function {
-            return self.handle_drop_function_completions().await;
-        }
-
-        if ssh_drop_index {
-            return self.handle_drop_index_completions().await;
-        }
-
-        if ssh_drop_type {
-            return self.handle_drop_type_completions().await;
-        }
-
-        if ssh_drop_view {
-            return self.handle_drop_view_completions().await;
-        }
-
-        if ssh_fields {
-            return self.handle_fields_completion(line, &position).await;
-        }
-
-        if ssh_from {
-            return self.handle_from_completion();
-        }
-
-        if ssh_table_completions {
-            return self.handle_table_completion(&position).await;
-        }
-
-        if ssh_types {
-            return self.handle_types_completion();
-        }
-
-        if ssh_type_modifiers {
-            return self.handle_type_modifiers_completion(line);
-        }
-
-        if ssh_if_not_exists {
-            return self.handle_if_not_exists();
-        }
-
-        if ssh_graph_types {
-            return if in_string {
+            }
+        } else if ssh_create_keywords {
+            self.handle_create_keywords()
+        } else if ssh_alter_keywords {
+            self.handle_alter_keywords()
+        } else if ssh_drop_keywords {
+            self.handle_drop_keywords()
+        } else if ssh_drop_keyspaces {
+            self.handle_drop_keyspace_completions(line, &position).await
+        } else if ssh_drop_tables {
+            self.handle_table_completion(&position).await
+        } else if ssh_drop_aggregate {
+            self.handle_drop_aggregate_completions().await
+        } else if ssh_drop_function {
+            self.handle_drop_function_completions().await
+        } else if ssh_drop_index {
+            self.handle_drop_index_completions().await
+        } else if ssh_drop_type {
+            self.handle_drop_type_completions().await
+        } else if ssh_drop_view {
+            self.handle_drop_view_completions().await
+        } else if ssh_fields {
+            self.handle_fields_completion(line, &position).await
+        } else if ssh_from {
+            self.handle_from_completion()
+        } else if ssh_table_completions {
+            self.handle_table_completion(&position).await
+        } else if ssh_types {
+            self.handle_types_completion()
+        } else if ssh_type_modifiers {
+            self.handle_type_modifiers_completion(line)
+        } else if ssh_if_not_exists {
+            self.handle_if_not_exists()
+        } else if ssh_graph_types {
+            if in_string {
                 self.handle_in_string_graph_engine_completion(line, &position)
                     .await
             } else {
                 self.handle_out_of_string_graph_engine_completion().await
-            };
-        }
+            }
+        } else if ssh_keywords && !in_string {
+            self.handle_keywords_completion()
+        } else {
+            Ok(Some(CompletionResponse::Array(vec![])))
+        };
 
-        if ssh_keywords && !in_string {
-            return self.handle_keywords_completion();
-        }
-
-        Ok(Some(CompletionResponse::Array(vec![])))
+        info!("Completion computation took {:?}", start.elapsed());
+        result
     }
 }
