@@ -41,6 +41,11 @@ cqlls = {
 },
 ```
 
+> [!TIP]
+> # RENDERIIIING GITHUB ^_^
+> <img width="568" height="187" alt="image" src="https://github.com/user-attachments/assets/73d43cf3-1d54-4e5b-8192-11cf85f4f2f4" />
+
+
 ### Config
 
 To configure cqlls you can add `.cqlls` file in the project root
